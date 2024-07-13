@@ -76,17 +76,26 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 	peer := NewTCPPeer(conn, true)
 	// 尝试握手
 	if err := t.HandshakeFunc(peer); err != nil {
-		conn.Close()
+		err := conn.Close()
+		if err != nil {
+			return
+		}
 		fmt.Printf("TCP handshake error: %s\n", err)
 		return
 	}
 	// 循环读取
-	msg := &Temp{}
+	//msg := &Temp{}
+	buf := make([]byte, 2000)
 	for {
-		if err := t.Decoder.Decoder(conn, msg); err != nil {
-			fmt.Printf("TCP error: %s\n", err)
-			continue
-		}
+
+		n, _ := conn.Read(buf)
+
+		//if err := t.Decoder.Decoder(conn, msg); err != nil {
+		//	fmt.Printf("TCP error: %s\n", err)
+		//	continue
+		//}
+
+		fmt.Printf("message: %v\n", buf[:n])
 	}
 
 }
