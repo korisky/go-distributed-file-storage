@@ -23,16 +23,22 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
-type TCPTransport struct {
-	listenAddress string
-	listener      net.Listener
-	mu            sync.RWMutex
-	peers         map[net.Addr]p2p.Peer
+type TCPTransportOpt struct {
+	ListenAddr    string
+	HandshakeFunc p2p.HandshakeFunc
+	Decoder       p2p.Decoder
 }
 
-func NewTCPTransport(listenAdd string) *TCPTransport {
+type TCPTransport struct {
+	TCPTransportOpt // 直接放入, 类似Java继承的意思, 可直接操作属性
+	listener        net.Listener
+	mu              sync.RWMutex
+	peers           map[net.Addr]p2p.Peer
+}
+
+func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 	return &TCPTransport{
-		listenAddress: listenAdd,
+		TCPTransportOpt: opts,
 	}
 }
 
@@ -40,7 +46,7 @@ func NewTCPTransport(listenAdd string) *TCPTransport {
 func (t *TCPTransport) ListenAndAccept() error {
 	// 绑定port到listener
 	var err error
-	t.listener, err = net.Listen("tcp", t.listenAddress)
+	t.listener, err = net.Listen("tcp", t.ListenAddr)
 	if err != nil {
 		return err
 	}
@@ -58,13 +64,29 @@ func (t *TCPTransport) startAcceptLoop() {
 			fmt.Printf("TCP accept errors:%s\n", err)
 		}
 		// 另起线程, 处理conn
+		fmt.Printf("new incoming connection %+v\n", conn)
 		go t.handleConn(conn)
 	}
 }
 
-func (t *TCPTransport) handleConn(conn net.Conn) {
-	fmt.Printf("new incoming connection %+v\n", conn)
+type Temp struct{}
 
+func (t *TCPTransport) handleConn(conn net.Conn) {
 	// 针对新连接, 创建Peer
+	peer := NewTCPPeer(conn, true)
+	// 尝试握手
+	if err := t.HandshakeFunc(peer); err != nil {
+		conn.Close()
+		fmt.Printf("TCP handshake error: %s\n", err)
+		return
+	}
+	// 循环读取
+	msg := &Temp{}
+	for {
+		if err := t.Decoder.Decoder(conn, msg); err != nil {
+			fmt.Printf("TCP error: %s\n", err)
+			continue
+		}
+	}
 
 }
