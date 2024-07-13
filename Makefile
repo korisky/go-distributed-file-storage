@@ -2,7 +2,7 @@ build:
 	@go build -o bin/dfs
 
 run:
-	@.go run ./bin/sfs
+	@go run .
 
 test:
 	@go test ./... -v

@@ -69,8 +69,6 @@ func (t *TCPTransport) startAcceptLoop() {
 	}
 }
 
-type Temp struct{}
-
 func (t *TCPTransport) handleConn(conn net.Conn) {
 	// 针对新连接, 创建Peer
 	peer := NewTCPPeer(conn, true)
@@ -84,15 +82,16 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		return
 	}
 	// 循环读取
-	msg := &p2p.Message{}
+	rpc := &p2p.RPC{}
 	for {
 
-		if err := t.Decoder.Decoder(conn, msg); err != nil {
+		if err := t.Decoder.Decoder(conn, rpc); err != nil {
 			fmt.Printf("TCP error: %s\n", err)
 			continue
 		}
+		rpc.From = conn.RemoteAddr()
 
-		fmt.Printf("message: %+v\n", msg)
+		fmt.Printf("Rpc: %+v\n", rpc)
 	}
 
 }

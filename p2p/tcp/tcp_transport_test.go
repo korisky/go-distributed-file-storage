@@ -21,7 +21,4 @@ func Test_TCPTransport(t *testing.T) {
 
 	// check accept return no error
 	assert.Nil(t, tr.ListenAndAccept())
-
-	// block
-	select {}
 }
