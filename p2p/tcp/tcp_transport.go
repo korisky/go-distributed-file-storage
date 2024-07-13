@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"errors"
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"net"
@@ -108,11 +109,18 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 	// 循环读取
 	rpc := p2p.RPC{}
 	for {
-
-		if err := t.Decoder.Decoder(conn, &rpc); err != nil {
-			fmt.Printf("TCP error: %s\n", err)
-			continue
+		err = t.Decoder.Decoder(conn, &rpc)
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				// 连接异常停止调用
+				return
+			} else {
+				// 解码异常让其继续
+				fmt.Printf("TCP error: %s\n", err)
+				continue
+			}
 		}
+
 		rpc.From = conn.RemoteAddr()
 		t.rpcCh <- rpc
 	}
