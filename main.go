@@ -11,7 +11,7 @@ func main() {
 	tcpOpts := tcp.TCPTransportOpt{
 		ListenAddr:    ":3999",
 		HandshakeFunc: p2p.NopHandshakeFunc,
-		Decoder:       p2p.GoDecoder{},
+		Decoder:       p2p.DefaultDecoder{},
 	}
 
 	transport := tcp.NewTCPTransport(tcpOpts)

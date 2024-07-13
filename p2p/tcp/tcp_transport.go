@@ -84,18 +84,15 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		return
 	}
 	// 循环读取
-	//msg := &Temp{}
-	buf := make([]byte, 2000)
+	msg := &p2p.Message{}
 	for {
 
-		n, _ := conn.Read(buf)
+		if err := t.Decoder.Decoder(conn, msg); err != nil {
+			fmt.Printf("TCP error: %s\n", err)
+			continue
+		}
 
-		//if err := t.Decoder.Decoder(conn, msg); err != nil {
-		//	fmt.Printf("TCP error: %s\n", err)
-		//	continue
-		//}
-
-		fmt.Printf("message: %v\n", buf[:n])
+		fmt.Printf("message: %+v\n", msg)
 	}
 
 }
