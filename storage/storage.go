@@ -52,8 +52,12 @@ func (k PathKey) fullPath() string {
 	return fmt.Sprintf("%s/%s", k.PathName, k.FileName)
 }
 
+const DefaultRoot = "../files/"
+
 // StorageOpt 存储Opt
 type StorageOpt struct {
+	// Root 是保存的根路径
+	Root              string
 	PathTransformFunc PathTransformFunc
 }
 
@@ -62,6 +66,12 @@ type Storage struct {
 }
 
 func NewStore(opts StorageOpt) *Storage {
+	if nil == opts.PathTransformFunc {
+		opts.PathTransformFunc = DefaultPathTransformFunc
+	}
+	if 0 == len(opts.Root) {
+		opts.Root = DefaultRoot
+	}
 	return &Storage{
 		StorageOpt: opts,
 	}
@@ -87,10 +97,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
 	_, err := os.Stat(pathKey.fullPath())
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // Delete 删除文件
@@ -99,6 +106,7 @@ func (s *Storage) Delete(key string) error {
 	defer func() {
 		fmt.Printf("deleted [%s] from disk\n", pathKey.FileName)
 	}()
+	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
 	return os.RemoveAll(pathKey.fullPath())
 }
 
@@ -107,18 +115,18 @@ func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 	// 转换路径
 	pathKey := s.PathTransformFunc(key)
 	// 打开文件
-	return os.Open(pathKey.fullPath())
+	return os.Open(s.Root + pathKey.fullPath())
 }
 
 // writeStream 从reader写入文件
 func (s *Storage) writeStream(key string, r io.Reader) error {
 	// 转换路径 + 创建路径
 	pathKey := s.PathTransformFunc(key)
-	if err := os.MkdirAll(pathKey.PathName, os.ModePerm); err != nil {
+	if err := os.MkdirAll(s.Root+pathKey.PathName, os.ModePerm); err != nil {
 		return err
 	}
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	fullPath := pathKey.fullPath()
+	fullPath := s.Root + pathKey.fullPath()
 	f, err := os.Create(fullPath)
 	if err != nil {
 		return err
