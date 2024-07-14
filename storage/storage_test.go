@@ -2,9 +2,15 @@ package storage
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"testing"
 )
+
+func TestPathTransformFunc(t *testing.T) {
+	key := "SydneyPic"
+	fmt.Println(CASPathTransformFunc(key))
+}
 
 func TestStorage(t *testing.T) {
 	opts := StorageOpt{

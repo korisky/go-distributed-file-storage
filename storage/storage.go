@@ -1,20 +1,40 @@
 package storage
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 // PathTransformFunc 路径转换
 type PathTransformFunc func(string) string
 
-type StorageOpt struct {
-	PathTransformFunc PathTransformFunc
+// CASPathTransformFunc 对key进行hash获取分级路径
+func CASPathTransformFunc(key string) string {
+	hash := sha1.Sum([]byte(key))
+	hashStr := hex.EncodeToString(hash[:])
+
+	blockSize := 8
+	sliceLen := len(hashStr) / blockSize
+	path := make([]string, sliceLen)
+
+	for i := 0; i < sliceLen; i++ {
+		from, to := i*blockSize, (i*blockSize)+blockSize
+		path[i] = hashStr[from:to]
+	}
+	return strings.Join(path, "/")
 }
 
 var DefaultPathTransformFunc = func(key string) string {
 	return key
+}
+
+// StorageOpt 存储Opt
+type StorageOpt struct {
+	PathTransformFunc PathTransformFunc
 }
 
 type Storage struct {
