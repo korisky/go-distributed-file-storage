@@ -14,12 +14,12 @@ func TestPathTransformFunc(t *testing.T) {
 
 func TestStorage(t *testing.T) {
 	opts := StorageOpt{
-		PathTransformFunc: DefaultPathTransformFunc,
+		PathTransformFunc: CASPathTransformFunc,
 	}
 	store := NewStore(opts)
 
 	data := bytes.NewReader([]byte("some jpg file byes"))
-	err := store.writeStream("File1", data)
+	err := store.writeStream("SydneyPic", data)
 	if err != nil {
 		log.Fatal(err)
 	}

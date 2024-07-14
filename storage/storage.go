@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"bytes"
+	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
 	"io"
@@ -54,16 +56,23 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
+	// 将文件流写入buffer
+	buf := new(bytes.Buffer)
+	io.Copy(buf, r)
+
+	// 对文件名进行hash
+	filenameByes := md5.Sum(buf.Bytes())
+	filename := hex.EncodeToString(filenameByes[:])
+
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	filename := "somefilename"
 	fullFilename := pathName + "/" + filename
 	f, err := os.Create(fullFilename)
 	if err != nil {
 		return err
 	}
 
-	// 数据流写入文件
-	n, err := io.Copy(f, r)
+	// buffer写入文件
+	n, err := io.Copy(f, buf)
 	if err != nil {
 		return err
 	}
