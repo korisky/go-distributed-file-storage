@@ -33,7 +33,22 @@ func TestStorage(t *testing.T) {
 
 	// 读取并使用String比对
 	b, _ := io.ReadAll(r)
+	fmt.Println(string(b))
 	if string(b) != string(data) {
 		t.Errorf("Want %s but got %s", string(data), string(b))
+	}
+}
+
+func TestStorage_Delete(t *testing.T) {
+	opts := StorageOpt{
+		PathTransformFunc: CASPathTransformFunc,
+	}
+	store := NewStore(opts)
+
+	// delete
+	key := "SydneyPic"
+	err := store.Delete(key)
+	if err != nil {
+		t.Error(err)
 	}
 }

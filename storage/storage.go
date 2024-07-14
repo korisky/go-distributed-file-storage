@@ -67,7 +67,7 @@ func NewStore(opts StorageOpt) *Storage {
 	}
 }
 
-// Read 串联流程:
+// Read 从文件读取的流程:
 // 1) 根据key调用转换路径, 2) 打开文件流, 3)通过buffer将文件流读出
 func (s *Storage) Read(key string) (io.Reader, error) {
 	// 读取
@@ -81,6 +81,15 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, stream)
 	return buf, err
+}
+
+// Delete 删除文件
+func (s *Storage) Delete(key string) error {
+	pathKey := s.PathTransformFunc(key)
+	defer func() {
+		fmt.Printf("deleted [%s] from disk\n", pathKey.FileName)
+	}()
+	return os.RemoveAll(pathKey.fullPath())
 }
 
 // readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
@@ -109,6 +118,6 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("writtern %d bytes to disk: %s", n, fullPath)
+	log.Printf("writtern %d bytes to disk: %s\n", n, fullPath)
 	return nil
 }
