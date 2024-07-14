@@ -9,7 +9,9 @@ import (
 
 func TestPathTransformFunc(t *testing.T) {
 	key := "SydneyPic"
-	fmt.Println(CASPathTransformFunc(key))
+	pathKey := CASPathTransformFunc(key)
+	fmt.Println(pathKey.FileName)
+	fmt.Println(pathKey.fileFullPath())
 }
 
 func TestStorage(t *testing.T) {

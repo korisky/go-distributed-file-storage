@@ -2,9 +2,9 @@ package storage
 
 import (
 	"bytes"
-	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,10 +12,10 @@ import (
 )
 
 // PathTransformFunc 路径转换
-type PathTransformFunc func(string) string
+type PathTransformFunc func(string) PathKey
 
 // CASPathTransformFunc 对key进行hash获取分级路径
-func CASPathTransformFunc(key string) string {
+func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashStr := hex.EncodeToString(hash[:])
 
@@ -27,11 +27,29 @@ func CASPathTransformFunc(key string) string {
 		from, to := i*blockSize, (i*blockSize)+blockSize
 		path[i] = hashStr[from:to]
 	}
-	return strings.Join(path, "/")
+
+	return PathKey{
+		PathName: strings.Join(path, "/"),
+		FileName: hashStr,
+	}
 }
 
-var DefaultPathTransformFunc = func(key string) string {
-	return key
+var DefaultPathTransformFunc = func(key string) PathKey {
+	return PathKey{
+		PathName: key,
+		FileName: key,
+	}
+}
+
+// PathKey 保存转换与原始的pathname
+type PathKey struct {
+	PathName string
+	FileName string
+}
+
+// fileFullPath 获取文件全路径名
+func (k PathKey) fileFullPath() string {
+	return fmt.Sprintf("%s/%s", k.PathName, k.FileName)
 }
 
 // StorageOpt 存储Opt
@@ -49,23 +67,23 @@ func NewStore(opts StorageOpt) *Storage {
 	}
 }
 
+// writeStream 将字节流存储到文件
 func (s *Storage) writeStream(key string, r io.Reader) error {
 	// 转换路径 + 创建路径
-	pathName := s.PathTransformFunc(key)
-	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
+	pathKey := s.PathTransformFunc(key)
+	if err := os.MkdirAll(pathKey.PathName, os.ModePerm); err != nil {
 		return err
 	}
 
 	// 将文件流写入buffer
 	buf := new(bytes.Buffer)
-	io.Copy(buf, r)
-
-	// 对文件名进行hash
-	filenameByes := md5.Sum(buf.Bytes())
-	filename := hex.EncodeToString(filenameByes[:])
+	_, err := io.Copy(buf, r)
+	if err != nil {
+		return err
+	}
 
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	fullFilename := pathName + "/" + filename
+	fullFilename := pathKey.fileFullPath()
 	f, err := os.Create(fullFilename)
 	if err != nil {
 		return err
