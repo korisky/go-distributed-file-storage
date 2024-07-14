@@ -83,6 +83,16 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 	return buf, err
 }
 
+// Has 判断是否存在
+func (s *Storage) Has(key string) bool {
+	pathKey := s.PathTransformFunc(key)
+	_, err := os.Stat(pathKey.fullPath())
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // Delete 删除文件
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
