@@ -3,7 +3,7 @@ package storage
 import (
 	"bytes"
 	"fmt"
-	"log"
+	"io"
 	"testing"
 )
 
@@ -11,7 +11,7 @@ func TestPathTransformFunc(t *testing.T) {
 	key := "SydneyPic"
 	pathKey := CASPathTransformFunc(key)
 	fmt.Println(pathKey.FileName)
-	fmt.Println(pathKey.fileFullPath())
+	fmt.Println(pathKey.fullPath())
 }
 
 func TestStorage(t *testing.T) {
@@ -20,9 +20,20 @@ func TestStorage(t *testing.T) {
 	}
 	store := NewStore(opts)
 
-	data := bytes.NewReader([]byte("some jpg file byes"))
-	err := store.writeStream("SydneyPic", data)
+	key := "SydneyPic"
+	data := []byte("some jpg file byes")
+	if err := store.writeStream(key, bytes.NewReader(data)); err != nil {
+		t.Error(err)
+	}
+
+	r, err := store.Read(key)
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
+	}
+
+	// 读取并使用String比对
+	b, _ := io.ReadAll(r)
+	if string(b) != string(data) {
+		t.Errorf("Want %s but got %s", string(data), string(b))
 	}
 }
