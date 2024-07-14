@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const DefaultRoot = "../NetworkFiles/"
+
 // PathTransformFunc 路径转换
 type PathTransformFunc func(string) PathKey
 
@@ -51,8 +53,6 @@ type PathKey struct {
 func (k PathKey) fullPath() string {
 	return fmt.Sprintf("%s/%s", k.PathName, k.FileName)
 }
-
-const DefaultRoot = "../files/"
 
 // StorageOpt 存储Opt
 type StorageOpt struct {
@@ -96,7 +96,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 // Has 判断是否存在
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
-	_, err := os.Stat(pathKey.fullPath())
+	_, err := os.Stat(s.Root + pathKey.fullPath())
 	return err == nil
 }
 
@@ -107,7 +107,7 @@ func (s *Storage) Delete(key string) error {
 		fmt.Printf("deleted [%s] from disk\n", pathKey.FileName)
 	}()
 	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
-	return os.RemoveAll(pathKey.fullPath())
+	return os.RemoveAll(s.Root + pathKey.fullPath())
 }
 
 // readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
