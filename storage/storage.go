@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -77,6 +78,11 @@ func NewStore(opts StorageOpt) *Storage {
 	}
 }
 
+// Write 添加一个Write允许外部访问
+func (s *Storage) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+
 // Read 从文件读取的流程:
 // 1) 根据key调用转换路径, 2) 打开文件流, 3)通过buffer将文件流读出
 func (s *Storage) Read(key string) (io.Reader, error) {
@@ -97,7 +103,7 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
 	_, err := os.Stat(s.Root + pathKey.fullPath())
-	return err == nil
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 // Delete 删除文件
