@@ -1,9 +1,9 @@
-package tcp
+package p2p
 
 import (
 	"errors"
 	"fmt"
-	"github.com/roylic/go-distributed-file-storage/p2p"
+	"log"
 	"net"
 )
 
@@ -29,21 +29,21 @@ func (p *TCPPeer) Close() error {
 
 type TCPTransportOpt struct {
 	ListenAddr    string
-	HandshakeFunc p2p.HandshakeFunc
-	Decoder       p2p.Decoder
-	OnPeer        func(peer p2p.Peer) error
+	HandshakeFunc HandshakeFunc
+	Decoder       Decoder
+	OnPeer        func(peer Peer) error
 }
 
 type TCPTransport struct {
 	TCPTransportOpt // 直接放入, 类似Java继承的意思, 可直接操作属性
 	listener        net.Listener
-	rpcCh           chan p2p.RPC
+	rpcCh           chan RPC
 }
 
 func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpt: opts,
-		rpcCh:           make(chan p2p.RPC),
+		rpcCh:           make(chan RPC),
 	}
 }
 
@@ -51,7 +51,7 @@ func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 // chan   // read-write
 // <-chan // read only
 // chan<- // write only
-func (t *TCPTransport) Consume() <-chan p2p.RPC {
+func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcCh
 }
 
@@ -65,6 +65,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 	}
 	// 另启线程, 开始循环accept
 	go t.startAcceptLoop()
+	log.Printf("TCP Transport listening on port: %s\n", t.ListenAddr)
 	return nil
 }
 
@@ -107,7 +108,7 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 	}
 
 	// 循环读取
-	rpc := p2p.RPC{}
+	rpc := RPC{}
 	for {
 		err = t.Decoder.Decoder(conn, &rpc)
 		if err != nil {

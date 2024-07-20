@@ -1,7 +1,6 @@
-package tcp
+package p2p
 
 import (
-	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -12,8 +11,8 @@ func Test_TCPTransport(t *testing.T) {
 
 	opt := TCPTransportOpt{
 		ListenAddr:    ":4000",
-		HandshakeFunc: p2p.NopHandshakeFunc,
-		Decoder:       p2p.GoDecoder{},
+		HandshakeFunc: NopHandshakeFunc,
+		Decoder:       GoDecoder{},
 	}
 
 	tr := NewTCPTransport(opt)
