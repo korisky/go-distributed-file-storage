@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
+	"time"
 )
 
 // makeServer extract the server opts
@@ -30,11 +32,18 @@ func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 }
 
 func main() {
+
+	// multi-server setting up
 	s1 := makeServer(":3999", "")
 	go func() {
 		log.Fatal(s1.Start())
 	}()
 
 	s2 := makeServer(":4999", ":3999")
-	_ = s2.Start()
+	go s2.Start()
+	time.Sleep(time.Second * 1)
+
+	// examine the broadcast feature
+	data := bytes.NewReader([]byte("my big data file"))
+	_ = s2.StoreData("MyPrivateData", data)
 }

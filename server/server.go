@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/gob"
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
@@ -65,6 +66,18 @@ func (s *FileServer) Stop() {
 // 1) Store this file to disk
 // 2) Broadcast this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
+	// 1) store
+	if err := s.store.Write(key, r); err != nil {
+		return err
+	}
+
+	buf := new(bytes.Buffer)
+	_, err := io.Copy(buf, r)
+	if err != nil {
+		return err
+	}
+	fmt.Println(buf.Bytes())
+
 	return nil
 }
 
