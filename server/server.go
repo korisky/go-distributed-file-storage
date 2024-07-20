@@ -66,19 +66,25 @@ func (s *FileServer) Stop() {
 // 1) Store this file to disk
 // 2) Broadcast this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
-	// 1) store
-	if err := s.store.Write(key, r); err != nil {
-		return err
-	}
 
+	// use teeReader to copy the reader, or else
+	// the read could only be used once, later
+	// broadcast only received empty
 	buf := new(bytes.Buffer)
-	_, err := io.Copy(buf, r)
-	if err != nil {
+	teeReader := io.TeeReader(r, buf)
+
+	// 1) store, after write, the reader r is empty
+	if err := s.store.Write(key, teeReader); err != nil {
 		return err
 	}
-	fmt.Println(buf.Bytes())
 
-	return nil
+	// 2) broadcast
+	p := &Payload{
+		Key:  key,
+		Data: buf.Bytes(),
+	}
+	fmt.Println(p.Data)
+	return s.broadcast(p)
 }
 
 // OnPeer handle peer connection
@@ -89,23 +95,27 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 	// put into map
 	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("Connected with remote :%s", p.RemoteAddr())
+	log.Printf("Connected with remote:%s, cur local:%s\n",
+		p.RemoteAddr(), p.LocalAddr())
 	return nil
 }
 
 // loop is for continuing retrieve msg from Transport channel
 func (s *FileServer) loop() {
-
 	defer func() {
 		log.Printf("File Server Stop")
 		_ = s.Transport.Close()
 	}()
-
+	// crucial looping
 	for {
 		select {
 		// retrieve msg from read only channel
 		case msg := <-s.Transport.Consume():
-			fmt.Println(msg)
+			var p Payload
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%+v\n", p)
 		// server stop
 		case <-s.quitCh:
 			return
@@ -137,7 +147,7 @@ type Payload struct {
 }
 
 // broadcast will help send all coding msg to cur node's peer
-func (s *FileServer) broadcast(p Payload) error {
+func (s *FileServer) broadcast(p *Payload) error {
 	// append to temp slice
 	var peers []io.Writer
 	for _, peer := range s.peers {

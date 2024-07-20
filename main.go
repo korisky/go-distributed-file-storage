@@ -34,16 +34,20 @@ func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 func main() {
 
 	// multi-server setting up
+	s2 := makeServer(":4999", ":3999")
 	s1 := makeServer(":3999", "")
+
 	go func() {
 		log.Fatal(s1.Start())
 	}()
+	time.Sleep(time.Second * 1)
 
-	s2 := makeServer(":4999", ":3999")
 	go s2.Start()
 	time.Sleep(time.Second * 1)
 
 	// examine the broadcast feature
 	data := bytes.NewReader([]byte("my big data file"))
 	_ = s2.StoreData("MyPrivateData", data)
+
+	select {}
 }
