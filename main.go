@@ -1,27 +1,35 @@
 package main
 
 import (
-	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
-	"github.com/roylic/go-distributed-file-storage/p2p/tcp"
+	"github.com/roylic/go-distributed-file-storage/server"
+	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
 )
 
 func main() {
 
-	tcpOpts := tcp.TCPTransportOpt{
+	// 1. tcp options
+	tcpOpts := p2p.TCPTransportOpt{
 		ListenAddr:    ":3999",
 		HandshakeFunc: p2p.NopHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
-		OnPeer:        func(p2p.Peer) error { return fmt.Errorf("failed") },
+		// TODO OnPeer:        func(p2p.Peer) error { return fmt.Errorf("failed") },
+	}
+	transport := p2p.NewTCPTransport(tcpOpts)
+
+	// 2. file server options
+	fileServerOpts := server.FileServerOpts{
+		StorageRoot:       "fileServerStorage",
+		PathTransformFunc: storage.CASPathTransformFunc,
+		Transport:         transport,
 	}
 
-	transport := tcp.NewTCPTransport(tcpOpts)
-
-	if err := transport.ListenAndAccept(); err != nil {
+	// 3. start the server
+	s := server.NewFileServer(fileServerOpts)
+	if err := s.Start(); err != nil {
 		log.Fatal(err)
 	}
 
-	// block
 	select {}
 }

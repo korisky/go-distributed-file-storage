@@ -2,7 +2,7 @@ build:
 	@go build -o bin/fs
 
 run:
-	@./bin/fs
+	@go run .
 
 test:
 	@go test ./...
