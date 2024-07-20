@@ -84,6 +84,11 @@ func (t *TCPTransport) startAcceptLoop() {
 	for {
 		// accept请求
 		conn, err := t.listener.Accept()
+		// close error handling -> graceful shutdown
+		if errors.Is(err, net.ErrClosed) {
+			return
+		}
+		// normal error handling
 		if err != nil {
 			fmt.Printf("TCP accept errors:%s\n", err)
 		}

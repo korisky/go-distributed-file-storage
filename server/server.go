@@ -54,7 +54,7 @@ func (s *FileServer) Stop() {
 func (s *FileServer) loop() {
 
 	defer func() {
-		log.Printf("file server stop")
+		log.Printf("File Server Stop")
 		s.Transport.Close()
 	}()
 
