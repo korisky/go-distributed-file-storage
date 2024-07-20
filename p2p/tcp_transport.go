@@ -23,6 +23,13 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
+// RemoteAddr implement Peer interface
+// return underlining connection's address
+func (p *TCPPeer) RemoteAddr() net.Addr {
+	return p.conn.RemoteAddr()
+}
+
+// Close implement Peer interface
 func (p *TCPPeer) Close() error {
 	return p.conn.Close()
 }
@@ -31,7 +38,7 @@ type TCPTransportOpt struct {
 	ListenAddr    string
 	HandshakeFunc HandshakeFunc
 	Decoder       Decoder
-	OnPeer        func(peer Peer) error
+	OnPeer        func(Peer) error
 }
 
 type TCPTransport struct {

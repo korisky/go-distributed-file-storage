@@ -6,6 +6,7 @@ import (
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
 	"strings"
+	"sync"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -18,8 +19,11 @@ type FileServerOpts struct {
 
 type FileServer struct {
 	FileServerOpts
-	store *storage.Storage
-	// for quit
+
+	peerLock sync.Mutex
+	peers    map[string]p2p.Peer
+
+	store  *storage.Storage
 	quitCh chan struct{}
 }
 
@@ -30,6 +34,7 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 	}
 	return &FileServer{
 		FileServerOpts: opts,
+		peers:          make(map[string]p2p.Peer),
 		store:          storage.NewStore(storageOpts),
 		quitCh:         make(chan struct{}),
 	}
@@ -52,6 +57,18 @@ func (s *FileServer) Start() error {
 // Stop will use to close a channel
 func (s *FileServer) Stop() {
 	close(s.quitCh)
+}
+
+// OnPeer handle peer connection
+func (s *FileServer) OnPeer(p p2p.Peer) error {
+	// lock for adding & unlock for later
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	// put into map
+	s.peers[p.RemoteAddr().String()] = p
+	log.Printf("Connected with remote :%s", p)
+	return nil
 }
 
 // loop is for continuing retrieve msg from Transport channel
