@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/gob"
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/storage"
@@ -64,7 +65,7 @@ func (s *FileServer) Stop() {
 // 1) Store this file to disk
 // 2) Broadcast this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
-
+	return nil
 }
 
 // OnPeer handle peer connection
@@ -122,6 +123,23 @@ type Payload struct {
 	Data []byte
 }
 
+// broadcast will help send all coding msg to cur node's peer
 func (s *FileServer) broadcast(p Payload) error {
-	return nil
+	// append to temp slice
+	var peers []io.Writer
+	for _, peer := range s.peers {
+		peers = append(peers, peer)
+	}
+
+	// concurrently streaming the same msg to all peers
+	// go and check description for MultiWriter()
+	// 由于net.Conn实现了Writer接口的Write方法, 所以继承了net.Conn的Peer
+	// 可以传入允许Writer的方法
+	mu := io.MultiWriter(peers...)
+
+	// so now by insert the multi-writer and pass the payload in it,
+	// it will encode the payload to bytes, and pass the bytes to
+	// multi-writer (only one copy). The multi-writer will copy it to
+	// all net.Conn connection (might be Zero-Copy in it)
+	return gob.NewEncoder(mu).Encode(p)
 }

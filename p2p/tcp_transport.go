@@ -9,8 +9,8 @@ import (
 
 // TCPPeer 代表一个通过TCP连接的远程node
 type TCPPeer struct {
-	// conn is the underline connection with the peer
-	conn net.Conn
+	// is the underline connection with the peer, tcp connection
+	net.Conn
 	// dail & retrieve a conn -> outbound = true
 	// accept & retrieve a conn -> inbound= true, outbound = false
 	outbound bool
@@ -18,26 +18,15 @@ type TCPPeer struct {
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
-		conn:     conn,
+		Conn:     conn,
 		outbound: outbound,
 	}
 }
 
 // Send implement Peer interface
 func (p *TCPPeer) Send(bytes []byte) error {
-	_, err := p.conn.Write(bytes)
+	_, err := p.Conn.Write(bytes)
 	return err
-}
-
-// RemoteAddr implement Peer interface
-// return underlining connection's address
-func (p *TCPPeer) RemoteAddr() net.Addr {
-	return p.conn.RemoteAddr()
-}
-
-// Close implement Peer interface
-func (p *TCPPeer) Close() error {
-	return p.conn.Close()
 }
 
 type TCPTransportOpt struct {

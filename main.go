@@ -36,5 +36,5 @@ func main() {
 	}()
 
 	s2 := makeServer(":4999", ":3999")
-	s2.Start()
+	_ = s2.Start()
 }
