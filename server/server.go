@@ -5,6 +5,7 @@ import (
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
+	"strings"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -77,6 +78,10 @@ func (s *FileServer) loop() {
 func (s *FileServer) bootstrapNetwork() error {
 	// for each node, make a new goroutine for dialing it
 	for _, addr := range s.BootstrapNodes {
+		if len(strings.TrimSpace(addr)) == 0 {
+			continue
+		}
+		// only when addr is not empty
 		fmt.Println("Attempting to connect with remote: ", addr)
 		go func(addr string) {
 			if err := s.Transport.Dial(addr); err != nil {

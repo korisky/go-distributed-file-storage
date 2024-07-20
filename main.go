@@ -5,39 +5,35 @@ import (
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
-	"time"
 )
 
-func main() {
-
+// makeServer extract the server opts
+func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 	// 1. tcp options
 	tcpOpts := p2p.TCPTransportOpt{
-		ListenAddr:    ":3999",
+		ListenAddr:    listenAddr,
 		HandshakeFunc: p2p.NopHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
 		// TODO OnPeer:        func(p2p.Peer) error { return fmt.Errorf("failed") },
 	}
 	transport := p2p.NewTCPTransport(tcpOpts)
-
 	// 2. file server options
 	fileServerOpts := server.FileServerOpts{
-		StorageRoot:       "fileServerStorage",
+		StorageRoot:       listenAddr + "_network",
 		PathTransformFunc: storage.CASPathTransformFunc,
 		Transport:         transport,
+		BootstrapNodes:    nodes,
 	}
-
 	// 3. construct server
-	s := server.NewFileServer(fileServerOpts)
+	return server.NewFileServer(fileServerOpts)
+}
 
-	// stop testing
+func main() {
+	s1 := makeServer(":3999", "")
 	go func() {
-		time.Sleep(time.Second * 10)
-		s.Stop()
+		log.Fatal(s1.Start())
 	}()
 
-	// start the server
-	if err := s.Start(); err != nil {
-		log.Fatal(err)
-	}
-
+	s2 := makeServer(":4999", ":3999")
+	s2.Start()
 }
