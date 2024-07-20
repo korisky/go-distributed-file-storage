@@ -47,7 +47,14 @@ func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 	}
 }
 
-// Consume 只能从Channel中读, 不能写
+// Close implement the Transport interface it
+// take care of port listener's graceful closing
+func (t *TCPTransport) Close() error {
+	return t.listener.Close()
+}
+
+// Consume implement the Transport interface
+// only reading from channel, below are golang's trick
 // chan   // read-write
 // <-chan // read only
 // chan<- // write only
@@ -55,7 +62,10 @@ func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcCh
 }
 
-// ListenAndAccept 进行TCP连接的Accept启动
+// ListenAndAccept implement the Transport interface
+// 1) bind the port for tcp
+// 2) looping accepting the tcp request
+// 3) looping parse the incoming msg to RPC & send into channel
 func (t *TCPTransport) ListenAndAccept() error {
 	// 绑定port到listener
 	var err error
@@ -83,8 +93,11 @@ func (t *TCPTransport) startAcceptLoop() {
 	}
 }
 
+// handleConn with below procedures
+// 1) creating new peer for each new tcp income (accept)
+// 2) use customised HandshakeFunc
+// 3) decode the incoming msg to RPC and put into channel (in loop)
 func (t *TCPTransport) handleConn(conn net.Conn) {
-
 	// 该handleConn方法内所有异常导致return前都会执行conn.Close()
 	var err error
 	defer func() {

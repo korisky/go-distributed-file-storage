@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/storage"
+	"log"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -51,6 +52,12 @@ func (s *FileServer) Stop() {
 
 // loop is for continuing retrieve msg from Transport channel
 func (s *FileServer) loop() {
+
+	defer func() {
+		log.Printf("file server stop")
+		s.Transport.Close()
+	}()
+
 	for {
 		select {
 		// retrieve msg from read only channel
