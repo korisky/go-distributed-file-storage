@@ -5,6 +5,7 @@ import "net"
 // Peer is an interface that represents the remote node
 type Peer interface {
 	RemoteAddr() net.Addr
+	Send([]byte) error
 	Close() error
 }
 

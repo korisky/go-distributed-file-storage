@@ -23,6 +23,12 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
+// Send implement Peer interface
+func (p *TCPPeer) Send(bytes []byte) error {
+	_, err := p.conn.Write(bytes)
+	return err
+}
+
 // RemoteAddr implement Peer interface
 // return underlining connection's address
 func (p *TCPPeer) RemoteAddr() net.Addr {

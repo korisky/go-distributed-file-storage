@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/storage"
+	"io"
 	"log"
 	"strings"
 	"sync"
@@ -59,6 +60,13 @@ func (s *FileServer) Stop() {
 	close(s.quitCh)
 }
 
+// StoreData contains below duties
+// 1) Store this file to disk
+// 2) Broadcast this file to all known peers in the network
+func (s *FileServer) StoreData(key string, r io.Reader) error {
+
+}
+
 // OnPeer handle peer connection
 func (s *FileServer) OnPeer(p p2p.Peer) error {
 	// lock for adding & unlock for later
@@ -67,7 +75,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 	// put into map
 	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("Connected with remote :%s", p)
+	log.Printf("Connected with remote :%s", p.RemoteAddr())
 	return nil
 }
 
@@ -106,5 +114,14 @@ func (s *FileServer) bootstrapNetwork() error {
 			}
 		}(addr)
 	}
+	return nil
+}
+
+type Payload struct {
+	Key  string
+	Data []byte
+}
+
+func (s *FileServer) broadcast(p Payload) error {
 	return nil
 }
