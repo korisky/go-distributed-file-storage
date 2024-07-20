@@ -5,6 +5,7 @@ import (
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"log"
+	"time"
 )
 
 func main() {
@@ -25,11 +26,18 @@ func main() {
 		Transport:         transport,
 	}
 
-	// 3. start the server
+	// 3. construct server
 	s := server.NewFileServer(fileServerOpts)
+
+	// stop testing
+	go func() {
+		time.Sleep(time.Second * 10)
+		s.Stop()
+	}()
+
+	// start the server
 	if err := s.Start(); err != nil {
 		log.Fatal(err)
 	}
 
-	select {}
 }
