@@ -47,6 +47,20 @@ func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 	}
 }
 
+// Dial implement the Transport interface,
+// use extra goroutine for dialing to the server
+func (t *TCPTransport) Dial(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	// also call the handleConn(), but from outbound
+	go t.handleConn(conn, true)
+
+	return nil
+}
+
 // Close implement the Transport interface it
 // take care of port listener's graceful closing
 func (t *TCPTransport) Close() error {
@@ -94,15 +108,15 @@ func (t *TCPTransport) startAcceptLoop() {
 		}
 		// 另起线程, 处理conn
 		fmt.Printf("new incoming connection %+v\n", conn)
-		go t.handleConn(conn)
+		go t.handleConn(conn, false)
 	}
 }
 
 // handleConn with below procedures
-// 1) creating new peer for each new tcp income (accept)
+// 1) creating new peer for each new tcp income (accept())
 // 2) use customised HandshakeFunc
 // 3) decode the incoming msg to RPC and put into channel (in loop)
-func (t *TCPTransport) handleConn(conn net.Conn) {
+func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	// 该handleConn方法内所有异常导致return前都会执行conn.Close()
 	var err error
 	defer func() {
@@ -111,7 +125,7 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 	}()
 
 	// 针对新连接, 创建Peer
-	peer := NewTCPPeer(conn, true)
+	peer := NewTCPPeer(conn, outbound)
 
 	// 尝试握手
 	if err = t.HandshakeFunc(peer); err != nil {

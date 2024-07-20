@@ -12,6 +12,7 @@ type FileServerOpts struct {
 	StorageRoot       string
 	PathTransformFunc storage.PathTransformFunc
 	Transport         p2p.Transport
+	BootstrapNodes    []string
 }
 
 type FileServer struct {
@@ -39,6 +40,8 @@ func (s *FileServer) Start() error {
 	if err := s.Transport.ListenAndAccept(); err != nil {
 		return err
 	}
+	// bootstrap the network
+	_ = s.bootstrapNetwork()
 	// looping accept msg
 	s.loop()
 
@@ -55,7 +58,7 @@ func (s *FileServer) loop() {
 
 	defer func() {
 		log.Printf("File Server Stop")
-		s.Transport.Close()
+		_ = s.Transport.Close()
 	}()
 
 	for {
@@ -68,4 +71,18 @@ func (s *FileServer) loop() {
 			return
 		}
 	}
+}
+
+// bootstrapNetwork is for dialing to other port
+func (s *FileServer) bootstrapNetwork() error {
+	// for each node, make a new goroutine for dialing it
+	for _, addr := range s.BootstrapNodes {
+		fmt.Println("Attempting to connect with remote: ", addr)
+		go func(addr string) {
+			if err := s.Transport.Dial(addr); err != nil {
+				log.Println("Dial error during BootstrapNetwork(): ", err)
+			}
+		}(addr)
+	}
+	return nil
 }
