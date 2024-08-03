@@ -94,8 +94,10 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	// use teeReader to copy the reader, or else
 	// the read could only be used once, later
 	// broadcast only received empty
-	buf := new(bytes.Buffer)
-	teeReader := io.TeeReader(r, buf)
+	var (
+		fileBuf   = new(bytes.Buffer)
+		teeReader = io.TeeReader(r, fileBuf)
+	)
 
 	// 1) store, after write, the reader r is empty
 	size, err := s.store.Write(key, teeReader)
@@ -109,24 +111,17 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		},
 	}
 
-	// 2) form msg
-	msgBuf := new(bytes.Buffer)
-	if err := gob.NewEncoder(msgBuf).Encode(msg); err != nil {
-		log.Fatal("Error during encoding message", err)
-	}
-
-	// 3) broadcast
-	for _, peer := range s.peers {
-		if err := peer.Send(msgBuf.Bytes()); err != nil {
-			return err
-		}
+	// 2) broadcast
+	if err := s.broadcast(&msg); err != nil {
+		return err
 	}
 
 	// TODO simulate big file keep sending
 	// TODO time consuming
+	// TODO user multi writer
 	time.Sleep(time.Millisecond * 300)
 	for _, peer := range s.peers {
-		n, err := io.Copy(peer, buf)
+		n, err := io.Copy(peer, fileBuf)
 		if err != nil {
 			return err
 		}
@@ -137,8 +132,8 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	//// use teeReader to copy the reader, or else
 	//// the read could only be used once, later
 	//// broadcast only received empty
-	//buf := new(bytes.Buffer)
-	//teeReader := io.TeeReader(r, buf)
+	//fileBuf := new(bytes.Buffer)
+	//teeReader := io.TeeReader(r, fileBuf)
 	//
 	//// 1) store, after write, the reader r is empty
 	//if err := s.store.Write(key, teeReader); err != nil {
@@ -148,7 +143,7 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	//// 2) broadcast (PayLoad struct)
 	//p := &DataMessage{
 	//	Key:  key,
-	//	Data: buf.Bytes(),
+	//	Data: fileBuf.Bytes(),
 	//}
 	//return s.broadcast(&Message{
 	//	From:    "TODO",
@@ -212,17 +207,36 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
 	// 所以可以被当作是io.Reader放入, 可以被读出内容
 	// 由于网络流并不包含EOF, 使用LimitReader进行封装
-	if _, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size)); err != nil {
+	size, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size))
+	if err != nil {
 		return err
 	}
+	log.Printf("writtern %d recv bytes to disk\n", size)
 
 	// callback to this Conn's loop
 	peer.(*p2p.TCPPeer).Wg.Done()
 	return nil
 }
 
-// broadcast will help send all coding msg to cur node's peer
+// broadcast will send message to all peers
 func (s *FileServer) broadcast(m *Message) error {
+	// form msg
+	buf := new(bytes.Buffer)
+	if err := gob.NewEncoder(buf).Encode(m); err != nil {
+		log.Fatal("Error during encoding message", err)
+	}
+	// send
+	for _, peer := range s.peers {
+		if err := peer.Send(buf.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stream all coding msg to cur node's peer
+func (s *FileServer) stream(m *Message) error {
+
 	// append to temp slice
 	var peers []io.Writer
 	for _, peer := range s.peers {
