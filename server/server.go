@@ -30,6 +30,16 @@ type FileServer struct {
 	quitCh chan struct{}
 }
 
+type Message struct {
+	From    string
+	Payload any
+}
+
+type DataMessage struct {
+	Key  string
+	Data []byte
+}
+
 func NewFileServer(opts FileServerOpts) *FileServer {
 	storageOpts := storage.StorageOpt{
 		Root:              opts.StorageRoot,
@@ -78,13 +88,15 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		return err
 	}
 
-	// 2) broadcast
-	p := &Payload{
+	// 2) broadcast (PayLoad struct)
+	p := &DataMessage{
 		Key:  key,
 		Data: buf.Bytes(),
 	}
-	fmt.Println(p.Data)
-	return s.broadcast(p)
+	return s.broadcast(&Message{
+		From:    "TODO",
+		Payload: p,
+	})
 }
 
 // OnPeer handle peer connection
@@ -101,6 +113,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 }
 
 // loop is for continuing retrieve msg from Transport channel
+// receive the *Broadcast* & *Store* the data
 func (s *FileServer) loop() {
 	defer func() {
 		log.Printf("File Server Stop")
@@ -111,11 +124,14 @@ func (s *FileServer) loop() {
 		select {
 		// retrieve msg from read only channel
 		case msg := <-s.Transport.Consume():
-			var p Payload
-			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
+			var m Message
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("Receive Data: %+v\n", string(p.Data))
+			// handle the received broadcast msg
+			if err := s.handleMessage(&m); err != nil {
+				log.Fatal(err)
+			}
 		// server stop
 		case <-s.quitCh:
 			return
@@ -141,13 +157,8 @@ func (s *FileServer) bootstrapNetwork() error {
 	return nil
 }
 
-type Payload struct {
-	Key  string
-	Data []byte
-}
-
 // broadcast will help send all coding msg to cur node's peer
-func (s *FileServer) broadcast(p *Payload) error {
+func (s *FileServer) broadcast(m *Message) error {
 	// append to temp slice
 	var peers []io.Writer
 	for _, peer := range s.peers {
@@ -160,9 +171,18 @@ func (s *FileServer) broadcast(p *Payload) error {
 	// 可以传入允许Writer的方法
 	mu := io.MultiWriter(peers...)
 
-	// so now by insert the multi-writer and pass the payload in it,
-	// it will encode the payload to bytes, and pass the bytes to
+	// so now by insert the multi-writer and pass the DataMessage in it,
+	// it will encode the DataMessage to bytes, and pass the bytes to
 	// multi-writer (only one copy). The multi-writer will copy it to
 	// all net.Conn connection (might be Zero-Copy in it)
-	return gob.NewEncoder(mu).Encode(p)
+	return gob.NewEncoder(mu).Encode(m)
+}
+
+// handleMessage will store the message from broadcast
+func (s *FileServer) handleMessage(m *Message) error {
+	switch v := m.Payload.(type) {
+	case *DataMessage:
+		fmt.Printf("received data %+v\n", v)
+	}
+	return nil
 }
