@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
+	"io"
 	"log"
 	"time"
 )
@@ -55,12 +55,16 @@ func main() {
 
 	// check file storage
 	time.Sleep(time.Millisecond * 500)
-	_, err := s2.Get(key)
+	fileReader, err := s2.Get(key)
 	if err != nil {
-		fmt.Println("Err", err)
-	} else {
-		fmt.Println("Found file")
+		log.Fatal("Err", err)
 	}
+
+	storedFileBytes, err := io.ReadAll(fileReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf(string(storedFileBytes))
 
 	select {}
 }
