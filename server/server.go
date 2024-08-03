@@ -158,22 +158,28 @@ func (s *FileServer) loop() {
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Fatal(err)
-			}
-			fmt.Printf("Receive: %s\n", msg.Payload)
-
-			// check msg source
-			peer, exist := s.peers[rpc.From]
-			if !exist {
-				panic("Peer not found in Mapping")
+				return
 			}
 
-			// TODO check peer
+			// handle message (store)
+			if err := s.handleMessage(rpc.From, &msg); err != nil {
+				log.Fatal(err)
+				return
+			}
+
+			//// check msg source
+			//peer, exist := s.peers[rpc.From]
+			//if !exist {
+			//	panic("Peer not found in Mapping")
+			//}
+			//
+			//// TODO check peer -> it would blocking read the message
 			//b := make([]byte, 1000)
 			//if _, err := peer.Read(b); err != nil {
 			//	panic(err)
 			//}
 			//fmt.Printf("%s\n", string(b))
-			peer.(*p2p.TCPPeer).Wg.Done()
+			//peer.(*p2p.TCPPeer).Wg.Done()
 			//// handle the received broadcast msg
 			//if err := s.handleMessage(&m); err != nil {
 			//	log.Fatal(err)
@@ -224,11 +230,16 @@ func (s *FileServer) broadcast(m *Message) error {
 	return gob.NewEncoder(mu).Encode(m)
 }
 
-//// handleMessage will store the message from broadcast
-//func (s *FileServer) handleMessage(m *Message) error {
-//	switch v := m.Payload.(type) {
-//	case *DataMessage:
-//		fmt.Printf("received data %+v\n", v)
-//	}
-//	return nil
-//}
+// handleMessage will store the message from broadcast
+func (s *FileServer) handleMessage(from string, msg *Message) error {
+	switch v := msg.Payload.(type) {
+	case MessageStoreFile:
+		return s.handleMessageStoreFile(from, v)
+	}
+	return nil
+}
+
+func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
+	fmt.Printf("recv %+v\n", msg)
+	return nil
+}
