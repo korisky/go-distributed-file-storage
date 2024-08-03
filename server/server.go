@@ -86,10 +86,20 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 	return nil
 }
 
-// StoreData contains below duties
+// Get from storage
+func (s *FileServer) Get(key string) (io.Reader, error) {
+	// have key
+	if s.store.Has(key) {
+		return s.store.Read(key)
+	}
+	// do not have key
+	panic("Do not have file locally")
+}
+
+// Store contains below duties
 // 1) *Store* this file to disk
 // 2) *Broadcast* this file to all known peers in the network
-func (s *FileServer) StoreData(key string, r io.Reader) error {
+func (s *FileServer) Store(key string, r io.Reader) error {
 
 	// use teeReader to copy the reader, or else
 	// the read could only be used once, later

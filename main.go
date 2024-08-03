@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
@@ -48,8 +49,18 @@ func main() {
 	time.Sleep(time.Second * 2)
 
 	// examine the broadcast feature
+	key := "MyPrivateData"
 	data := bytes.NewReader([]byte("my big data file"))
-	_ = s2.StoreData("MyPrivateData", data)
+	_ = s2.Store(key, data)
+
+	// check file storage
+	time.Sleep(time.Millisecond * 500)
+	_, err := s2.Get(key)
+	if err != nil {
+		fmt.Println("Err", err)
+	} else {
+		fmt.Println("Found file")
+	}
 
 	select {}
 }
