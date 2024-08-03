@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 )
 
 // TCPPeer 代表一个通过TCP连接的远程node
@@ -14,12 +15,15 @@ type TCPPeer struct {
 	// dail & retrieve a conn -> outbound = true
 	// accept & retrieve a conn -> inbound= true, outbound = false
 	outbound bool
+
+	Wg *sync.WaitGroup
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn:     conn,
 		outbound: outbound,
+		Wg:       new(sync.WaitGroup),
 	}
 }
 
@@ -109,7 +113,7 @@ func (t *TCPTransport) startAcceptLoop() {
 			fmt.Printf("TCP accept errors:%s\n", err)
 		}
 		// 另起线程, 处理conn
-		fmt.Printf("new incoming connection %+v\n", conn)
+		log.Printf("new incoming connection %+v\n", conn)
 		go t.handleConn(conn, false)
 	}
 }
@@ -141,7 +145,9 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 		}
 	}
 
-	// 循环读取
+	// 循环读取 (如果不加入wg, 这里的loop会出现异常)
+	// 可以将其理解为需要将当个Conn的单个事情处理完, 才能再处理同一个Conn的下一件事
+
 	rpc := RPC{}
 	for {
 		err = t.Decoder.Decoder(conn, &rpc)
@@ -156,8 +162,13 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 			}
 		}
 
-		rpc.From = conn.RemoteAddr()
+		rpc.From = conn.RemoteAddr().String()
+		peer.Wg.Add(1)
+		log.Printf("Waiting till stream is done")
+
 		t.rpcCh <- rpc
+		peer.Wg.Wait()
+		log.Println("Stream done continuing the loop")
 	}
 
 }

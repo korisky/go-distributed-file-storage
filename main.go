@@ -40,10 +40,10 @@ func main() {
 	go func() {
 		log.Fatal(s1.Start())
 	}()
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 
 	go s2.Start()
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 
 	// examine the broadcast feature
 	data := bytes.NewReader([]byte("my big data file"))

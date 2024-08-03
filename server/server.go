@@ -10,6 +10,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -35,11 +36,6 @@ type Message struct {
 	Payload any
 }
 
-type DataMessage struct {
-	Key  string
-	Data []byte
-}
-
 func NewFileServer(opts FileServerOpts) *FileServer {
 	storageOpts := storage.StorageOpt{
 		Root:              opts.StorageRoot,
@@ -63,7 +59,6 @@ func (s *FileServer) Start() error {
 	_ = s.bootstrapNetwork()
 
 	// init the gob, for encode & decoding
-	gob.Register(DataMessage{})
 	gob.Register(Message{})
 
 	// looping accept msg
@@ -82,26 +77,53 @@ func (s *FileServer) Stop() {
 // 2) *Broadcast* this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 
-	// use teeReader to copy the reader, or else
-	// the read could only be used once, later
-	// broadcast only received empty
 	buf := new(bytes.Buffer)
-	teeReader := io.TeeReader(r, buf)
-
-	// 1) store, after write, the reader r is empty
-	if err := s.store.Write(key, teeReader); err != nil {
-		return err
+	msg := &Message{
+		From:    "",
+		Payload: []byte("storageKey"),
+	}
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		log.Fatal("Error during encoding message", err)
 	}
 
-	// 2) broadcast (PayLoad struct)
-	p := &DataMessage{
-		Key:  key,
-		Data: buf.Bytes(),
+	for _, peer := range s.peers {
+		if err := peer.Send(buf.Bytes()); err != nil {
+			return err
+		}
 	}
-	return s.broadcast(&Message{
-		From:    "TODO",
-		Payload: p,
-	})
+
+	// TODO simulate big file keep sending
+	// TODO time consuming
+	time.Sleep(time.Second * 3)
+	payload := []byte("This is Large File")
+	for _, peer := range s.peers {
+		if err := peer.Send(payload); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return nil
+
+	//// use teeReader to copy the reader, or else
+	//// the read could only be used once, later
+	//// broadcast only received empty
+	//buf := new(bytes.Buffer)
+	//teeReader := io.TeeReader(r, buf)
+	//
+	//// 1) store, after write, the reader r is empty
+	//if err := s.store.Write(key, teeReader); err != nil {
+	//	return err
+	//}
+	//
+	//// 2) broadcast (PayLoad struct)
+	//p := &DataMessage{
+	//	Key:  key,
+	//	Data: buf.Bytes(),
+	//}
+	//return s.broadcast(&Message{
+	//	From:    "TODO",
+	//	Payload: p,
+	//})
 }
 
 // OnPeer handle peer connection
@@ -128,15 +150,32 @@ func (s *FileServer) loop() {
 	for {
 		select {
 		// retrieve msg from read only channel
-		case msg := <-s.Transport.Consume():
-			var m Message
-			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
+		case rpc := <-s.Transport.Consume():
+
+			// decode the msg (blocking)
+			var msg Message
+			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Fatal(err)
 			}
-			// handle the received broadcast msg
-			if err := s.handleMessage(&m); err != nil {
-				log.Fatal(err)
+			fmt.Printf("Receive: %s\n", string(msg.Payload.([]byte)))
+
+			// check msg source
+			peer, exist := s.peers[rpc.From]
+			if !exist {
+				panic("Peer not found in Mapping")
 			}
+
+			// TODO check peer
+			b := make([]byte, 1000)
+			if _, err := peer.Read(b); err != nil {
+				panic(err)
+			}
+			fmt.Printf("%s\n", string(b))
+			peer.(*p2p.TCPPeer).Wg.Done()
+			//// handle the received broadcast msg
+			//if err := s.handleMessage(&m); err != nil {
+			//	log.Fatal(err)
+			//}
 		// server stop
 		case <-s.quitCh:
 			return
@@ -152,7 +191,7 @@ func (s *FileServer) bootstrapNetwork() error {
 			continue
 		}
 		// only when addr is not empty
-		fmt.Println("Attempting to connect with remote: ", addr)
+		log.Println("Attempting to connect with remote: ", addr)
 		go func(addr string) {
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("Dial error during BootstrapNetwork(): ", err)
@@ -183,11 +222,11 @@ func (s *FileServer) broadcast(m *Message) error {
 	return gob.NewEncoder(mu).Encode(m)
 }
 
-// handleMessage will store the message from broadcast
-func (s *FileServer) handleMessage(m *Message) error {
-	switch v := m.Payload.(type) {
-	case *DataMessage:
-		fmt.Printf("received data %+v\n", v)
-	}
-	return nil
-}
+//// handleMessage will store the message from broadcast
+//func (s *FileServer) handleMessage(m *Message) error {
+//	switch v := m.Payload.(type) {
+//	case *DataMessage:
+//		fmt.Printf("received data %+v\n", v)
+//	}
+//	return nil
+//}
