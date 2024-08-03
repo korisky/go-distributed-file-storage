@@ -95,7 +95,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 	}
 	// 另启线程, 开始循环accept
 	go t.startAcceptLoop()
-	log.Printf("TCP Transport listening on port: %s\n", t.ListenAddr)
+	log.Printf("server %s >>> TCP Transport listening on port: %s\n", t.ListenAddr, t.ListenAddr)
 	return nil
 }
 
@@ -110,10 +110,10 @@ func (t *TCPTransport) startAcceptLoop() {
 		}
 		// normal error handling
 		if err != nil {
-			fmt.Printf("TCP accept errors:%s\n", err)
+			log.Printf("server %s >>> receive TCP accept errors:%s\n", t.ListenAddr, err)
 		}
 		// 另起线程, 处理conn
-		log.Printf("new incoming connection %+v\n", conn)
+		log.Printf("server %s >>> new incoming connection %+v\n", t.ListenAddr, conn)
 		go t.handleConn(conn, false)
 	}
 }
@@ -158,18 +158,18 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 				return
 			} else {
 				// 解码异常让其继续
-				fmt.Printf("TCP error: %s\n", err)
+				log.Printf(" server %s >>> receive TCP error: %s\n", err)
 				continue
 			}
 		}
 
 		rpc.From = conn.RemoteAddr().String()
 		peer.Wg.Add(1)
-		log.Printf("Waiting till readed stream is done")
+		log.Printf("server %s >>> Waiting till readed stream is done\n", t.ListenAddr)
 
 		t.rpcCh <- rpc
 		peer.Wg.Wait()
-		log.Println("Stream done continuing the loop")
+		log.Printf("server %s <<< Stream done continuing the loop\n", t.ListenAddr)
 	}
 
 }

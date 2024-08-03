@@ -200,7 +200,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 
 // handleMessageStoreFile specific handle message for store file
 func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	fmt.Printf("recv %+v\n", msg)
+	log.Printf("recv %+v\n", msg)
 
 	// got the peer & let Conn receive the consumption result
 	peer, exist := s.peers[from]
