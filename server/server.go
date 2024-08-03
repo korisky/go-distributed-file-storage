@@ -61,6 +61,11 @@ func (s *FileServer) Start() error {
 	}
 	// bootstrap the network
 	_ = s.bootstrapNetwork()
+
+	// init the gob, for encode & decoding
+	gob.Register(DataMessage{})
+	gob.Register(Message{})
+
 	// looping accept msg
 	s.loop()
 
