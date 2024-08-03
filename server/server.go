@@ -126,7 +126,7 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	// TODO time consuming
 	time.Sleep(time.Millisecond * 300)
 	for _, peer := range s.peers {
-		n, err := io.Copy(peer, r)
+		n, err := io.Copy(peer, buf)
 		if err != nil {
 			return err
 		}
