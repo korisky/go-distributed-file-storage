@@ -15,7 +15,7 @@ type TCPPeer struct {
 	// dail & retrieve a conn -> outbound = true
 	// accept & retrieve a conn -> inbound= true, outbound = false
 	outbound bool
-
+	// for same conn read blocking
 	Wg *sync.WaitGroup
 }
 
@@ -23,7 +23,7 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn:     conn,
 		outbound: outbound,
-		Wg:       new(sync.WaitGroup),
+		Wg:       &sync.WaitGroup{},
 	}
 }
 
@@ -147,7 +147,8 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 	// 循环读取 (如果不加入wg, 这里的loop会出现异常)
 	// 可以将其理解为需要将当个Conn的单个事情处理完, 才能再处理同一个Conn的下一件事
-
+	// 这是因为在conn的loop中我们对Chan进行read (conn级别), 然后将数据写入rpcCh
+	// 而在rpcCh里面也有进行chan消费的一方, 消费的实际上也是接收到的conn中的data
 	rpc := RPC{}
 	for {
 		err = t.Decoder.Decoder(conn, &rpc)
@@ -164,7 +165,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 		rpc.From = conn.RemoteAddr().String()
 		peer.Wg.Add(1)
-		log.Printf("Waiting till stream is done")
+		log.Printf("Waiting till readed stream is done")
 
 		t.rpcCh <- rpc
 		peer.Wg.Wait()
