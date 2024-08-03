@@ -63,8 +63,8 @@ func (s *FileServer) Stop() {
 }
 
 // StoreData contains below duties
-// 1) Store this file to disk
-// 2) Broadcast this file to all known peers in the network
+// 1) *Store* this file to disk
+// 2) *Broadcast* this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	// use teeReader to copy the reader, or else
@@ -115,7 +115,7 @@ func (s *FileServer) loop() {
 			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("%+v\n", p)
+			fmt.Printf("Receive Data: %+v\n", string(p.Data))
 		// server stop
 		case <-s.quitCh:
 			return
