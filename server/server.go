@@ -10,7 +10,6 @@ import (
 	"log"
 	"strings"
 	"sync"
-	"time"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -32,8 +31,11 @@ type FileServer struct {
 }
 
 type Message struct {
-	From    string
 	Payload any
+}
+
+type MessageStoreFile struct {
+	Key string
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
@@ -60,6 +62,7 @@ func (s *FileServer) Start() error {
 
 	// init the gob, for encode & decoding
 	gob.Register(Message{})
+	gob.Register(MessageStoreFile{})
 
 	// looping accept msg
 	s.loop()
@@ -72,6 +75,19 @@ func (s *FileServer) Stop() {
 	close(s.quitCh)
 }
 
+// OnPeer handle peer connection
+func (s *FileServer) OnPeer(p p2p.Peer) error {
+	// lock for adding & unlock for later
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	// put into map
+	s.peers[p.RemoteAddr().String()] = p
+	log.Printf("Connected with remote:%s, cur local:%s\n",
+		p.RemoteAddr(), p.LocalAddr())
+	return nil
+}
+
 // StoreData contains below duties
 // 1) *Store* this file to disk
 // 2) *Broadcast* this file to all known peers in the network
@@ -79,8 +95,7 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	buf := new(bytes.Buffer)
 	msg := &Message{
-		From:    "",
-		Payload: []byte("storageKey"),
+		Payload: MessageStoreFile{Key: key},
 	}
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
 		log.Fatal("Error during encoding message", err)
@@ -94,13 +109,13 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	// TODO simulate big file keep sending
 	// TODO time consuming
-	time.Sleep(time.Second * 3)
-	payload := []byte("This is Large File")
-	for _, peer := range s.peers {
-		if err := peer.Send(payload); err != nil {
-			log.Fatal(err)
-		}
-	}
+	//time.Sleep(time.Second * 3)
+	//payload := []byte("This is Large File")
+	//for _, peer := range s.peers {
+	//	if err := peer.Send(payload); err != nil {
+	//		log.Fatal(err)
+	//	}
+	//}
 
 	return nil
 
@@ -126,19 +141,6 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	//})
 }
 
-// OnPeer handle peer connection
-func (s *FileServer) OnPeer(p p2p.Peer) error {
-	// lock for adding & unlock for later
-	s.peerLock.Lock()
-	defer s.peerLock.Unlock()
-
-	// put into map
-	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("Connected with remote:%s, cur local:%s\n",
-		p.RemoteAddr(), p.LocalAddr())
-	return nil
-}
-
 // loop is for continuing retrieve msg from Transport channel
 // receive the *Broadcast* & *Store* the data
 func (s *FileServer) loop() {
@@ -157,7 +159,7 @@ func (s *FileServer) loop() {
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("Receive: %s\n", string(msg.Payload.([]byte)))
+			fmt.Printf("Receive: %s\n", msg.Payload)
 
 			// check msg source
 			peer, exist := s.peers[rpc.From]
@@ -166,11 +168,11 @@ func (s *FileServer) loop() {
 			}
 
 			// TODO check peer
-			b := make([]byte, 1000)
-			if _, err := peer.Read(b); err != nil {
-				panic(err)
-			}
-			fmt.Printf("%s\n", string(b))
+			//b := make([]byte, 1000)
+			//if _, err := peer.Read(b); err != nil {
+			//	panic(err)
+			//}
+			//fmt.Printf("%s\n", string(b))
 			peer.(*p2p.TCPPeer).Wg.Done()
 			//// handle the received broadcast msg
 			//if err := s.handleMessage(&m); err != nil {
