@@ -79,7 +79,7 @@ func NewStore(opts StorageOpt) *Storage {
 }
 
 // Write 添加一个Write允许外部访问
-func (s *Storage) Write(key string, r io.Reader) error {
+func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
@@ -125,24 +125,24 @@ func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 }
 
 // writeStream 从reader写入文件
-func (s *Storage) writeStream(key string, r io.Reader) error {
+func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	// 转换路径 + 创建路径
 	pathKey := s.PathTransformFunc(key)
 	if err := os.MkdirAll(s.Root+pathKey.PathName, os.ModePerm); err != nil {
-		return err
+		return 0, err
 	}
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
 	fullPath := s.Root + pathKey.fullPath()
 	f, err := os.Create(fullPath)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	// 写入文件 (连接时由于每次传入的是Stream, 没有EOF, 会导致Blocking)
 	// 可以使用 CopyN 指定拷贝大小 / 使用limitReader
 	n, err := io.Copy(f, r)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	log.Printf("writtern %d bytes to disk: %s\n", n, fullPath)
-	return nil
+	return n, nil
 }

@@ -91,19 +91,33 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 // 2) *Broadcast* this file to all known peers in the network
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 
+	// use teeReader to copy the reader, or else
+	// the read could only be used once, later
+	// broadcast only received empty
 	buf := new(bytes.Buffer)
-	msg := &Message{
+	teeReader := io.TeeReader(r, buf)
+
+	// 1) store, after write, the reader r is empty
+	size, err := s.store.Write(key, teeReader)
+	if err != nil {
+		return err
+	}
+	msg := Message{
 		Payload: MessageStoreFile{
 			Key:  key,
-			Size: 15,
+			Size: size,
 		},
 	}
-	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+
+	// 2) form msg
+	msgBuf := new(bytes.Buffer)
+	if err := gob.NewEncoder(msgBuf).Encode(msg); err != nil {
 		log.Fatal("Error during encoding message", err)
 	}
 
+	// 3) broadcast
 	for _, peer := range s.peers {
-		if err := peer.Send(buf.Bytes()); err != nil {
+		if err := peer.Send(msgBuf.Bytes()); err != nil {
 			return err
 		}
 	}
@@ -118,7 +132,6 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		}
 		fmt.Printf("recv & writtern %d bytes\n", n)
 	}
-
 	return nil
 
 	//// use teeReader to copy the reader, or else
@@ -199,7 +212,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
 	// 所以可以被当作是io.Reader放入, 可以被读出内容
 	// 由于网络流并不包含EOF, 使用LimitReader进行封装
-	if err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size)); err != nil {
+	if _, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size)); err != nil {
 		return err
 	}
 
