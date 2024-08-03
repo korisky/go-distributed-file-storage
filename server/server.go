@@ -36,7 +36,8 @@ type Message struct {
 }
 
 type MessageStoreFile struct {
-	Key string
+	Key  string
+	Size int64
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
@@ -92,7 +93,10 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	buf := new(bytes.Buffer)
 	msg := &Message{
-		Payload: MessageStoreFile{Key: key},
+		Payload: MessageStoreFile{
+			Key:  key,
+			Size: 15,
+		},
 	}
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
 		log.Fatal("Error during encoding message", err)
@@ -107,11 +111,12 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	// TODO simulate big file keep sending
 	// TODO time consuming
 	time.Sleep(time.Millisecond * 300)
-	payload := []byte("This is Large File")
 	for _, peer := range s.peers {
-		if err := peer.Send(payload); err != nil {
-			log.Fatal(err)
+		n, err := io.Copy(peer, r)
+		if err != nil {
+			return err
 		}
+		fmt.Printf("recv & writtern %d bytes\n", n)
 	}
 
 	return nil
@@ -194,7 +199,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
 	// 所以可以被当作是io.Reader放入, 可以被读出内容
 	// 由于网络流并不包含EOF, 使用LimitReader进行封装
-	if err := s.store.Write(msg.Key, io.LimitReader(peer, 10)); err != nil {
+	if err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size)); err != nil {
 		return err
 	}
 
