@@ -60,10 +60,6 @@ func (s *FileServer) Start() error {
 	// bootstrap the network
 	_ = s.bootstrapNetwork()
 
-	// init the gob, for encode & decoding
-	gob.Register(Message{})
-	gob.Register(MessageStoreFile{})
-
 	// looping accept msg
 	s.loop()
 
@@ -154,36 +150,19 @@ func (s *FileServer) loop() {
 		// retrieve msg from read only channel
 		case rpc := <-s.Transport.Consume():
 
-			// decode the msg (blocking)
+			// 1) decode the msg (blocking)
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Fatal(err)
 				return
 			}
 
-			// handle message (store)
+			// 2) handle message (store)
 			if err := s.handleMessage(rpc.From, &msg); err != nil {
 				log.Fatal(err)
 				return
 			}
 
-			//// check msg source
-			//peer, exist := s.peers[rpc.From]
-			//if !exist {
-			//	panic("Peer not found in Mapping")
-			//}
-			//
-			//// TODO check peer -> it would blocking read the message
-			//b := make([]byte, 1000)
-			//if _, err := peer.Read(b); err != nil {
-			//	panic(err)
-			//}
-			//fmt.Printf("%s\n", string(b))
-			//peer.(*p2p.TCPPeer).Wg.Done()
-			//// handle the received broadcast msg
-			//if err := s.handleMessage(&m); err != nil {
-			//	log.Fatal(err)
-			//}
 		// server stop
 		case <-s.quitCh:
 			return
@@ -191,22 +170,32 @@ func (s *FileServer) loop() {
 	}
 }
 
-// bootstrapNetwork is for dialing to other port
-func (s *FileServer) bootstrapNetwork() error {
-	// for each node, make a new goroutine for dialing it
-	for _, addr := range s.BootstrapNodes {
-		if len(strings.TrimSpace(addr)) == 0 {
-			continue
-		}
-		// only when addr is not empty
-		log.Println("Attempting to connect with remote: ", addr)
-		go func(addr string) {
-			if err := s.Transport.Dial(addr); err != nil {
-				log.Println("Dial error during BootstrapNetwork(): ", err)
-			}
-		}(addr)
+// handleMessage will store the message from broadcast
+func (s *FileServer) handleMessage(from string, msg *Message) error {
+	switch v := msg.Payload.(type) {
+	case MessageStoreFile:
+		return s.handleMessageStoreFile(from, v)
 	}
 	return nil
+}
+
+// handleMessageStoreFile specific handle message for store file
+func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
+	fmt.Printf("recv %+v\n", msg)
+
+	// got the peer & let Conn receive the consumption result
+	peer, exist := s.peers[from]
+	if !exist {
+		return fmt.Errorf("peer (%s) not found in Mapping, end handleMessage logic", from)
+	}
+
+	// callback to this Conn's loop
+	peer.(*p2p.TCPPeer).Wg.Done()
+
+	// store the input stream from peer
+	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
+	// 所以可以被当作是io.Reader放入, 可以被读出内容
+	return s.store.Write(msg.Key, peer)
 }
 
 // broadcast will help send all coding msg to cur node's peer
@@ -230,16 +219,23 @@ func (s *FileServer) broadcast(m *Message) error {
 	return gob.NewEncoder(mu).Encode(m)
 }
 
-// handleMessage will store the message from broadcast
-func (s *FileServer) handleMessage(from string, msg *Message) error {
-	switch v := msg.Payload.(type) {
-	case MessageStoreFile:
-		return s.handleMessageStoreFile(from, v)
+// bootstrapNetwork is for dialing to other port
+func (s *FileServer) bootstrapNetwork() error {
+	// init the gob, for encode & decoding
+	gob.Register(Message{})
+	gob.Register(MessageStoreFile{})
+	// for each node, make a new goroutine for dialing it
+	for _, addr := range s.BootstrapNodes {
+		if len(strings.TrimSpace(addr)) == 0 {
+			continue
+		}
+		// only when addr is not empty
+		log.Println("Attempting to connect with remote: ", addr)
+		go func(addr string) {
+			if err := s.Transport.Dial(addr); err != nil {
+				log.Println("Dial error during BootstrapNetwork(): ", err)
+			}
+		}(addr)
 	}
-	return nil
-}
-
-func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	fmt.Printf("recv %+v\n", msg)
 	return nil
 }
