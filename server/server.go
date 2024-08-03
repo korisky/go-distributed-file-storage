@@ -10,6 +10,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -105,13 +106,13 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	// TODO simulate big file keep sending
 	// TODO time consuming
-	//time.Sleep(time.Second * 3)
-	//payload := []byte("This is Large File")
-	//for _, peer := range s.peers {
-	//	if err := peer.Send(payload); err != nil {
-	//		log.Fatal(err)
-	//	}
-	//}
+	time.Sleep(time.Millisecond * 300)
+	payload := []byte("This is Large File")
+	for _, peer := range s.peers {
+		if err := peer.Send(payload); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	return nil
 
@@ -189,13 +190,17 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 		return fmt.Errorf("peer (%s) not found in Mapping, end handleMessage logic", from)
 	}
 
-	// callback to this Conn's loop
-	peer.(*p2p.TCPPeer).Wg.Done()
-
 	// store the input stream from peer
 	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
 	// 所以可以被当作是io.Reader放入, 可以被读出内容
-	return s.store.Write(msg.Key, peer)
+	// 由于网络流并不包含EOF, 使用LimitReader进行封装
+	if err := s.store.Write(msg.Key, io.LimitReader(peer, 10)); err != nil {
+		return err
+	}
+
+	// callback to this Conn's loop
+	peer.(*p2p.TCPPeer).Wg.Done()
+	return nil
 }
 
 // broadcast will help send all coding msg to cur node's peer

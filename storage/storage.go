@@ -137,7 +137,8 @@ func (s *Storage) writeStream(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// 写入文件
+	// 写入文件 (连接时由于每次传入的是Stream, 没有EOF, 会导致Blocking)
+	// 可以使用 CopyN 指定拷贝大小 / 使用limitReader
 	n, err := io.Copy(f, r)
 	if err != nil {
 		return err
