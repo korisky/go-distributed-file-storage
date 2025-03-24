@@ -158,7 +158,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 				return
 			} else {
 				// 解码异常让其继续
-				log.Printf(" server %s >>> receive TCP error: %s\n", err)
+				log.Printf(" server %s >>> receive TCP error: %s\n", t.ListenAddr, err)
 				continue
 			}
 		}
