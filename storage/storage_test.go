@@ -58,7 +58,7 @@ func storeFile(key string, t *testing.T) (*Storage, []byte) {
 	}
 	store := NewStore(opts)
 	data := []byte("some jpg file byes")
-	if err := store.writeStream(key, bytes.NewReader(data)); err != nil {
+	if _, err := store.writeStream(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 	return store, data
