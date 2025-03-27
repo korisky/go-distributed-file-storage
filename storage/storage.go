@@ -70,7 +70,7 @@ func NewStore(opts StorageOpt) *Storage {
 	if nil == opts.PathTransformFunc {
 		opts.PathTransformFunc = DefaultPathTransformFunc
 	}
-	if 0 == len(opts.Root) {
+	if len(opts.Root) == 0 {
 		opts.Root = DefaultRoot
 	}
 	return &Storage{
