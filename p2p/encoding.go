@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/gob"
 	"io"
+	"log"
 )
 
 type Decoder interface {
@@ -18,6 +19,22 @@ func (d GoDecoder) Decoder(r io.Reader, rpc *RPC) error {
 type DefaultDecoder struct{}
 
 func (d DefaultDecoder) Decoder(r io.Reader, rpc *RPC) error {
+
+	// determine the type
+	// stream -> do not decoding
+	// message -> do decoding
+	peekBuf := make([]byte, 1)
+	if _, err := r.Read(peekBuf); err != nil {
+		log.Fatalf("Decoding error: %+v, returning nil", err)
+		return nil
+	}
+
+	stream := peekBuf[0] == INCOMING_STREAM
+	if stream {
+		rpc.Stream = true
+		return nil
+	}
+
 	// 将Message内容读取到Decoder中
 	buf := make([]byte, 1024)
 	n, err := r.Read(buf)

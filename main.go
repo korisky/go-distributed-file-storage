@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
@@ -48,38 +48,38 @@ func main() {
 	}()
 	time.Sleep(time.Second * 2)
 
-	//// A) examine the broadcast feature
-	//key := "MyPrivateData"
-	//data := bytes.NewReader([]byte("my big data file"))
-	//_ = s2.Store(key, data)
-	//
-	//// check file storage
-	//time.Sleep(time.Millisecond * 500)
-	//fileReader, err := s2.Get(key)
-	//if err != nil {
-	//	log.Fatal("Err", err)
-	//}
-	//
-	//storedFileBytes, err := io.ReadAll(fileReader)
+	// A) examine the broadcast feature
+	key := "MyPrivateData"
+	data := bytes.NewReader([]byte("my big data file"))
+	_ = s2.Store(key, data)
+
+	// check file storage
+	time.Sleep(time.Millisecond * 500)
+	fileReader, err := s2.Get(key)
+	if err != nil {
+		log.Fatal("Err", err)
+	}
+
+	storedFileBytes, err := io.ReadAll(fileReader)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf(string(storedFileBytes))
+
+	//// B) examine the getFile (download) feature
+	//// get the file reader
+	////r, err := s2.Get("foo") // no file found
+	////r, err := s2.Get("MyPrivateData") // file found, stored before
+	//r, err := s2.Get("S1_Server_Only") // file not found, need request to other
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-	//log.Printf(string(storedFileBytes))
-
-	// B) examine the getFile (download) feature
-	// get the file reader
-	//r, err := s2.Get("foo") // no file found
-	//r, err := s2.Get("MyPrivateData") // file found, stored before
-	r, err := s2.Get("S1_Server_Only") // file not found, need request to other
-	if err != nil {
-		log.Fatal(err)
-	}
-	// reader -> read the whole file
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("file downloaded: " + string(b))
+	//// reader -> read the whole file
+	//b, err := io.ReadAll(r)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//fmt.Println("file downloaded: " + string(b))
 
 	select {}
 }

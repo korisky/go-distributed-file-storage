@@ -49,7 +49,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
 	if s.store.Has(key) {
-		fmt.Printf("server[%s] found file %s locally, sending...",
+		log.Printf("server[%s] found file %s locally, sending...",
 			s.FileServerOpts.StorageRoot, key)
 		return s.store.Read(key)
 	}
@@ -119,6 +119,9 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	// TODO user multi writer
 	time.Sleep(time.Millisecond * 300)
 	for _, peer := range s.peers {
+		// first byte for message type indication
+		peer.Send([]byte{p2p.INCOMING_STREAM})
+		// then send the file
 		n, err := io.Copy(peer, fileBuf)
 		if err != nil {
 			return err
@@ -190,6 +193,8 @@ func (s *FileServer) broadcast(m *Message) error {
 	}
 	// send
 	for _, peer := range s.peers {
+		// first byte to indicate the msg type
+		peer.Send([]byte{p2p.INCOMING_MESSAGE})
 		if err := peer.Send(buf.Bytes()); err != nil {
 			return err
 		}
