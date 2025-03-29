@@ -87,14 +87,15 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 	return nil
 }
 
-// Get from storage
+// Get file from storage
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key
 	if s.store.Has(key) {
 		return s.store.Read(key)
 	}
 	// do not have key
-	panic("Do not have file locally")
+	panic("server Do not have file locally")
+	return nil, nil
 }
 
 // Store contains below duties
@@ -201,6 +202,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 	switch v := msg.Payload.(type) {
 	case MessageStoreFile:
 		return s.handleMessageStoreFile(from, v)
+		//case
 	}
 	return nil
 }
@@ -248,6 +250,7 @@ func (s *FileServer) broadcast(m *Message) error {
 }
 
 // stream all coding msg to cur node's peer
+// Deprecated: use  broadcast instead
 func (s *FileServer) stream(m *Message) error {
 
 	// append to temp slice
