@@ -48,21 +48,7 @@ func main() {
 	}()
 	time.Sleep(time.Second * 2)
 
-	// B) examine the getFile (download) feature
-	// get the file reader
-	r, err := s2.Get("foo") // no file found
-	//r, err := s2.Get("MyPrivateData") // file found, stored before
-	if err != nil {
-		log.Fatal(err)
-	}
-	// reader -> read the whole file
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("file downloaded: " + string(b))
-
-	// A) examine the broadcast feature
+	//// A) examine the broadcast feature
 	//key := "MyPrivateData"
 	//data := bytes.NewReader([]byte("my big data file"))
 	//_ = s2.Store(key, data)
@@ -79,6 +65,21 @@ func main() {
 	//	log.Fatal(err)
 	//}
 	//log.Printf(string(storedFileBytes))
+
+	// B) examine the getFile (download) feature
+	// get the file reader
+	//r, err := s2.Get("foo") // no file found
+	//r, err := s2.Get("MyPrivateData") // file found, stored before
+	r, err := s2.Get("S1_Server_Only") // file not found, need request to other
+	if err != nil {
+		log.Fatal(err)
+	}
+	// reader -> read the whole file
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("file downloaded: " + string(b))
 
 	select {}
 }

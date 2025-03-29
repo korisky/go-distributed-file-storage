@@ -40,7 +40,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 	// put into map
 	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("server %s connected with remote:%s \n",
+	log.Printf("server[%s] connected with remote:%s \n",
 		p.LocalAddr(), p.RemoteAddr())
 	return nil
 }
@@ -49,11 +49,13 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
 	if s.store.Has(key) {
+		fmt.Printf("server[%s] found file %s locally, sending...",
+			s.FileServerOpts.StorageRoot, key)
 		return s.store.Read(key)
 	}
 
 	// do not have key, broadcast for finding
-	fmt.Printf("server %s Do not have file %s locally, fetching...",
+	log.Printf("server[%s] Do not have file %s locally, fetching...",
 		s.FileServerOpts.StorageRoot, key)
 	msg := Message{
 		Payload: MessageGetFile{
@@ -64,7 +66,18 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		return nil, err
 	}
 
-	// broadcast message
+	for _, peer := range s.peers {
+		fileBuffer := new(bytes.Buffer)
+		n, err := io.CopyN(fileBuffer, peer, 10)
+		if err != nil {
+			// TODO
+			return nil, err
+		}
+		log.Printf("server[%s] received %d bytes over network\n",
+			s.FileServerOpts.StorageRoot, n)
+		log.Println(fileBuffer.String())
+	}
+
 	select {}
 
 	// do not have key
@@ -110,7 +123,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("server %s recv & writtern %d bytes\n",
+		fmt.Printf("server[%s] recv & writtern %d bytes\n",
 			s.FileServerOpts.StorageRoot, n)
 	}
 	return nil
@@ -153,14 +166,12 @@ func (s *FileServer) loop() {
 			// 1) decode the msg (blocking)
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
-				log.Fatal(err)
-				return
+				log.Println("decoding error:", err)
 			}
 
 			// 2) handle message (store)
 			if err := s.handleMessage(rpc.From, &msg); err != nil {
-				log.Fatal(err)
-				return
+				log.Println("handling message error:", err)
 			}
 
 		// server stop
@@ -219,7 +230,7 @@ func (s *FileServer) bootstrapNetwork() error {
 			continue
 		}
 		// only when addr is not empty
-		log.Printf("server %s is attempting to connect with remote:%s\n", s.FileServerOpts.StorageRoot, addr)
+		log.Printf("server[%s] is attempting to connect with remote:%s\n", s.FileServerOpts.StorageRoot, addr)
 		go func(addr string) {
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("Dial error during BootstrapNetwork(): ", err)
