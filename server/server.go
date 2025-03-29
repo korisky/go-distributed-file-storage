@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/roylic/go-distributed-file-storage/p2p"
-	"github.com/roylic/go-distributed-file-storage/storage"
 	"io"
 	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/roylic/go-distributed-file-storage/p2p"
+	"github.com/roylic/go-distributed-file-storage/storage"
 )
 
 // FileServerOpts inner Transport is for accepting the p2p communication
@@ -81,8 +82,8 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 	// put into map
 	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("Connected with remote:%s, cur local:%s\n",
-		p.RemoteAddr(), p.LocalAddr())
+	log.Printf("server %s connected with remote:%s \n",
+		p.LocalAddr(), p.RemoteAddr())
 	return nil
 }
 
@@ -135,7 +136,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("recv & writtern %d bytes\n", n)
+		fmt.Printf("server %s recv & writtern %d bytes\n",
+			s.FileServerOpts.StorageRoot, n)
 	}
 	return nil
 
@@ -205,7 +207,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 
 // handleMessageStoreFile specific handle message for store file
 func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	log.Printf("recv %+v\n", msg)
+	log.Printf("server [%s] recv %+v\n", s.FileServerOpts.StorageRoot, msg)
 
 	// got the peer & let Conn receive the consumption result
 	peer, exist := s.peers[from]
@@ -221,7 +223,8 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	if err != nil {
 		return err
 	}
-	log.Printf("writtern %d recv bytes to disk\n", size)
+	log.Printf("server %s, writtern %d recv bytes to disk\n",
+		s.FileServerOpts.StorageRoot, size)
 
 	// callback to this Conn's loop
 	peer.(*p2p.TCPPeer).Wg.Done()
@@ -277,7 +280,7 @@ func (s *FileServer) bootstrapNetwork() error {
 			continue
 		}
 		// only when addr is not empty
-		log.Println("Attempting to connect with remote: ", addr)
+		log.Printf("server %s is attempting to connect with remote:%s\n", s.FileServerOpts.StorageRoot, addr)
 		go func(addr string) {
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("Dial error during BootstrapNetwork(): ", err)

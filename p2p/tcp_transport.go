@@ -110,10 +110,12 @@ func (t *TCPTransport) startAcceptLoop() {
 		}
 		// normal error handling
 		if err != nil {
-			log.Printf("server %s >>> receive TCP accept errors:%s\n", t.ListenAddr, err)
+			log.Printf("server %s >>> receive TCP accept errors:%s\n",
+				t.ListenAddr, err)
 		}
 		// 另起线程, 处理conn
-		log.Printf("server %s >>> new incoming connection %+v\n", t.ListenAddr, conn)
+		log.Printf("server %s >>> new incoming connection %s, conn:%+v\n",
+			t.ListenAddr, conn.RemoteAddr(), conn)
 		go t.handleConn(conn, false)
 	}
 }
@@ -169,7 +171,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 		t.rpcCh <- rpc
 		peer.Wg.Wait()
-		log.Printf("server %s <<< Stream done continuing the loop\n", t.ListenAddr)
+		log.Printf("server %s <<< stream done continuing the loop\n", t.ListenAddr)
 	}
 
 }

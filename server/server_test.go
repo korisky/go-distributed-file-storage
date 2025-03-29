@@ -13,7 +13,9 @@ import (
 
 func Test_FilePassing(t *testing.T) {
 	// multi-server setting up
+	// S2 监听4999端口, 主动将:3999作为连接的node
 	s2 := makeServer(":4999", ":3999")
+	// S1 监听3999端口
 	s1 := makeServer(":3999", "")
 
 	go func() {
