@@ -50,13 +50,13 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
 	if s.store.Has(key) {
 		log.Printf("server[%s] found file %s locally, sending...",
-			s.FileServerOpts.StorageRoot, key)
+			s.Transport.Addr(), key)
 		return s.store.Read(key)
 	}
 
 	// do not have key, broadcast for finding
 	log.Printf("server[%s] Do not have file %s locally, fetching...",
-		s.FileServerOpts.StorageRoot, key)
+		s.Transport.Addr(), key)
 	msg := Message{
 		Payload: MessageGetFile{
 			Key: key,
@@ -74,7 +74,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 			return nil, err
 		}
 		log.Printf("server[%s] received %d bytes over network\n",
-			s.FileServerOpts.StorageRoot, n)
+			s.Transport.Addr(), n)
 		log.Println(fileBuffer.String())
 	}
 
@@ -86,7 +86,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 // Store contains below duties
 // 1) *Store* this file to disk
-// 2) *Broadcast* this file to all known peers in the network
+// 2) *Broadcast* send message to the peers, telling what we got
+// 3)
 func (s *FileServer) Store(key string, r io.Reader) error {
 
 	// use teeReader to copy the reader, or else
@@ -109,15 +110,16 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		},
 	}
 
-	// 2) broadcast
+	// 2) broadcast message (message type)
 	if err := s.broadcast(&msg); err != nil {
 		return err
 	}
 
+	// 3) broadcast file stream (stream type)
 	// TODO simulate big file keep sending
 	// TODO time consuming
 	// TODO user multi writer
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Millisecond * 5)
 	for _, peer := range s.peers {
 		// first byte for message type indication
 		peer.Send([]byte{p2p.INCOMING_STREAM})
@@ -127,7 +129,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 			return err
 		}
 		fmt.Printf("server[%s] recv & writtern %d bytes\n",
-			s.FileServerOpts.StorageRoot, n)
+			s.Transport.Addr(), n)
 	}
 	return nil
 
@@ -235,7 +237,8 @@ func (s *FileServer) bootstrapNetwork() error {
 			continue
 		}
 		// only when addr is not empty
-		log.Printf("server[%s] is attempting to connect with remote:%s\n", s.FileServerOpts.StorageRoot, addr)
+		log.Printf("server[%s] is attempting to connect with remote:%s\n",
+			s.Transport.Addr(), addr)
 		go func(addr string) {
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("Dial error during BootstrapNetwork(): ", err)

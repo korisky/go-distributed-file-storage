@@ -20,30 +20,27 @@ type DefaultDecoder struct{}
 
 func (d DefaultDecoder) Decoder(r io.Reader, rpc *RPC) error {
 
-	// determine the type
-	// stream -> do not decoding
-	// message -> do decoding
+	// determine the type by 1st byte
 	peekBuf := make([]byte, 1)
 	if _, err := r.Read(peekBuf); err != nil {
 		log.Fatalf("Decoding error: %+v, returning nil", err)
 		return nil
 	}
 
+	// if it's stream -> finished
 	stream := peekBuf[0] == INCOMING_STREAM
 	if stream {
 		rpc.Stream = true
 		return nil
 	}
 
-	// 将Message内容读取到Decoder中
+	// if it's message -> read and copy to buffer (as payload)
 	buf := make([]byte, 1024)
 	n, err := r.Read(buf)
 	if err != nil {
 		return err
 	}
-
 	// copy from buffer
 	rpc.Payload = buf[:n]
-
 	return nil
 }

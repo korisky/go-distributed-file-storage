@@ -49,8 +49,13 @@ type TCPTransport struct {
 func NewTCPTransport(opts TCPTransportOpt) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpt: opts,
-		rpcCh:           make(chan RPC),
+		rpcCh:           make(chan RPC, 1024), // buffered channel
 	}
+}
+
+// Addr for addressing
+func (t *TCPTransport) Addr() string {
+	return t.ListenAddr
 }
 
 // Dial implement the Transport interface,
@@ -95,7 +100,8 @@ func (t *TCPTransport) ListenAndAccept() error {
 	}
 	// 另启线程, 开始循环accept
 	go t.startAcceptLoop()
-	log.Printf("server[%s] >>> TCP Transport listening on port: %s\n", t.ListenAddr, t.ListenAddr)
+	log.Printf("server[%s] >>> TCP Transport listening on port: %s\n",
+		t.ListenAddr, t.ListenAddr)
 	return nil
 }
 
@@ -151,8 +157,9 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	// 可以将其理解为需要将当个Conn的单个事情处理完, 才能再处理同一个Conn的下一件事
 	// 这是因为在conn的loop中我们对Chan进行read (conn级别), 然后将数据写入rpcCh
 	// 而在rpcCh里面也有进行chan消费的一方, 消费的实际上也是接收到的conn中的data
-	rpc := RPC{}
 	for {
+		// 注意 -> 需要将RPC创建放入for-loop中
+		rpc := RPC{}
 		err = t.Decoder.Decoder(conn, &rpc)
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {

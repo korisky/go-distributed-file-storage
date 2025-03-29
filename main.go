@@ -5,7 +5,6 @@ import (
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
-	"io"
 	"log"
 	"time"
 )
@@ -48,23 +47,30 @@ func main() {
 	}()
 	time.Sleep(time.Second * 2)
 
-	// A) examine the broadcast feature
-	key := "MyPrivateData"
-	data := bytes.NewReader([]byte("my big data file"))
-	_ = s2.Store(key, data)
-
-	// check file storage
-	time.Sleep(time.Millisecond * 500)
-	fileReader, err := s2.Get(key)
-	if err != nil {
-		log.Fatal("Err", err)
+	// C) examine multiple calling
+	for i := 0; i < 10; i++ {
+		data := bytes.NewReader([]byte("my big data file"))
+		s2.Store("MyPrivateData", data)
+		time.Sleep(5 * time.Millisecond)
 	}
 
-	storedFileBytes, err := io.ReadAll(fileReader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf(string(storedFileBytes))
+	//// A) examine the broadcast feature
+	//key := "MyPrivateData"
+	//data := bytes.NewReader([]byte("my big data file"))
+	//_ = s2.Store(key, data)
+	//
+	//// check file storage
+	//time.Sleep(time.Millisecond * 500)
+	//fileReader, err := s2.Get(key)
+	//if err != nil {
+	//	log.Fatal("Err", err)
+	//}
+	//
+	//storedFileBytes, err := io.ReadAll(fileReader)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//log.Printf(string(storedFileBytes))
 
 	//// B) examine the getFile (download) feature
 	//// get the file reader

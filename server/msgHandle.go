@@ -21,7 +21,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 
 // handleMessageStoreFile specific handle message for store file
 func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	log.Printf("server[%s] recv %+v\n", s.FileServerOpts.StorageRoot, msg)
+	log.Printf("server[%s] recv %+v\n", s.Transport.Addr(), msg)
 
 	// got the peer & let Conn receive the consumption result
 	peer, exist := s.peers[from]
@@ -38,7 +38,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 		return err
 	}
 	log.Printf("server[%s], writtern %d recv bytes to disk\n",
-		s.FileServerOpts.StorageRoot, size)
+		s.Transport.Addr(), size)
 
 	// callback to this Conn's loop
 	peer.(*p2p.TCPPeer).Wg.Done()
@@ -47,17 +47,17 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 
 // handleMessageGetFile handle get file request from other node
 func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
-	log.Printf("server[%s] recv key:%s\n", s.FileServerOpts.StorageRoot, msg)
+	log.Printf("server[%s] recv key:%s\n", s.Transport.Addr(), msg)
 
 	// 1) 如果本地没有 (通过map确认), 也就返回内容了
 	if !s.store.Has(msg.Key) {
 		return fmt.Errorf("server[%s] not found file :%s, end handleMessage logic\n",
-			s.FileServerOpts.StorageRoot, msg.Key)
+			s.Transport.Addr(), msg.Key)
 	}
 
 	// 2) 如果本地有, 需要向请求方write回去数据流 (peer.Send 通过TCP传输s)
 	log.Printf("server[%s] serving file with key %s over the network\n",
-		s.FileServerOpts.StorageRoot, msg.Key)
+		s.Transport.Addr(), msg.Key)
 	// 获取目标的文件的reader
 	r, err := s.store.Read(msg.Key)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	requestPeer, ok := s.peers[from]
 	if !ok {
 		return fmt.Errorf("server[%s] found peer %s had not connected",
-			s.FileServerOpts.StorageRoot, from)
+			s.Transport.Addr(), from)
 	}
 	// copy 数据流 & 传输回去
 	n, err := io.Copy(requestPeer, r)
@@ -75,6 +75,6 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 		return err
 	}
 	log.Printf("server[%s] written %d byets over the network\n",
-		s.FileServerOpts.StorageRoot, n)
+		s.Transport.Addr(), n)
 	return nil
 }
