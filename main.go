@@ -50,8 +50,8 @@ func main() {
 
 	// B) examine the getFile (download) feature
 	// get the file reader
-	//r, err := s2.Get("foo") // no file found
-	r, err := s2.Get("MyPrivateData") // file found, stored before
+	r, err := s2.Get("foo") // no file found
+	//r, err := s2.Get("MyPrivateData") // file found, stored before
 	if err != nil {
 		log.Fatal(err)
 	}

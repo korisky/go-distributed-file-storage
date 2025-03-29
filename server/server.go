@@ -7,52 +7,10 @@ import (
 	"io"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/roylic/go-distributed-file-storage/p2p"
-	"github.com/roylic/go-distributed-file-storage/storage"
 )
-
-// FileServerOpts inner Transport is for accepting the p2p communication
-type FileServerOpts struct {
-	StorageRoot       string
-	PathTransformFunc storage.PathTransformFunc
-	Transport         p2p.Transport
-	BootstrapNodes    []string
-}
-
-type FileServer struct {
-	FileServerOpts
-
-	peerLock sync.Mutex
-	peers    map[string]p2p.Peer
-
-	store  *storage.Storage
-	quitCh chan struct{}
-}
-
-type Message struct {
-	Payload any
-}
-
-type MessageStoreFile struct {
-	Key  string
-	Size int64
-}
-
-func NewFileServer(opts FileServerOpts) *FileServer {
-	storageOpts := storage.StorageOpt{
-		Root:              opts.StorageRoot,
-		PathTransformFunc: opts.PathTransformFunc,
-	}
-	return &FileServer{
-		FileServerOpts: opts,
-		peers:          make(map[string]p2p.Peer),
-		store:          storage.NewStore(storageOpts),
-		quitCh:         make(chan struct{}),
-	}
-}
 
 // Start the server
 func (s *FileServer) Start() error {
@@ -89,12 +47,27 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 // Get file from storage
 func (s *FileServer) Get(key string) (io.Reader, error) {
-	// have key
+	// have key, just return
 	if s.store.Has(key) {
 		return s.store.Read(key)
 	}
+
+	// do not have key, broadcast for finding
+	fmt.Printf("server %s Do not have file %s locally, fetching...",
+		s.FileServerOpts.StorageRoot, key)
+	msg := Message{
+		Payload: MessageGetFile{
+			Key: key,
+		},
+	}
+	if err := s.broadcast(&msg); err != nil {
+		return nil, err
+	}
+
+	// broadcast message
+	select {}
+
 	// do not have key
-	panic("server Do not have file locally")
 	return nil, nil
 }
 
@@ -197,42 +170,6 @@ func (s *FileServer) loop() {
 	}
 }
 
-// handleMessage will store the message from broadcast
-func (s *FileServer) handleMessage(from string, msg *Message) error {
-	switch v := msg.Payload.(type) {
-	case MessageStoreFile:
-		return s.handleMessageStoreFile(from, v)
-		//case
-	}
-	return nil
-}
-
-// handleMessageStoreFile specific handle message for store file
-func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
-	log.Printf("server [%s] recv %+v\n", s.FileServerOpts.StorageRoot, msg)
-
-	// got the peer & let Conn receive the consumption result
-	peer, exist := s.peers[from]
-	if !exist {
-		return fmt.Errorf("peer (%s) not found in Mapping, end handleMessage logic", from)
-	}
-
-	// store the input stream from peer
-	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
-	// 所以可以被当作是io.Reader放入, 可以被读出内容
-	// 由于网络流并不包含EOF, 使用LimitReader进行封装
-	size, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size))
-	if err != nil {
-		return err
-	}
-	log.Printf("server %s, writtern %d recv bytes to disk\n",
-		s.FileServerOpts.StorageRoot, size)
-
-	// callback to this Conn's loop
-	peer.(*p2p.TCPPeer).Wg.Done()
-	return nil
-}
-
 // broadcast will send message to all peers
 func (s *FileServer) broadcast(m *Message) error {
 	// form msg
@@ -275,8 +212,7 @@ func (s *FileServer) stream(m *Message) error {
 // bootstrapNetwork is for dialing to other port
 func (s *FileServer) bootstrapNetwork() error {
 	// init the gob, for encode & decoding
-	gob.Register(Message{})
-	gob.Register(MessageStoreFile{})
+	initTypeRegistration()
 	// for each node, make a new goroutine for dialing it
 	for _, addr := range s.BootstrapNodes {
 		if len(strings.TrimSpace(addr)) == 0 {
@@ -291,4 +227,11 @@ func (s *FileServer) bootstrapNetwork() error {
 		}(addr)
 	}
 	return nil
+}
+
+// initTypeRegistration 需要将可能deserializing的struct进行提前注册
+func initTypeRegistration() {
+	gob.Register(Message{})
+	gob.Register(MessageStoreFile{})
+	gob.Register(MessageGetFile{})
 }
