@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Test_FilePassing 简单建立2个服务，确认文件上传单个节点后的broadcast效果
 func Test_FilePassing(t *testing.T) {
 	// multi-server setting up
 	// S2 监听4999端口, 主动将:3999作为连接的node
