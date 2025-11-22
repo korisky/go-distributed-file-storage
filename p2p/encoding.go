@@ -18,6 +18,7 @@ func (d GoDecoder) Decoder(r io.Reader, rpc *RPC) error {
 
 type DefaultDecoder struct{}
 
+// Decoder 根据第一个bytes确认是stream类型还是message类型
 func (d DefaultDecoder) Decoder(r io.Reader, rpc *RPC) error {
 
 	// determine the type by 1st byte
