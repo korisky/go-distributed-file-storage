@@ -8,6 +8,10 @@
 *.so
 *.dylib
 
+# ide
+.idea/
+.vscode/
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -16,6 +20,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# files storage
+:3999*/
+:4999*/
 
 # Go workspace file
 go.work
