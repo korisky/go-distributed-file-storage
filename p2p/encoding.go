@@ -28,14 +28,14 @@ func (d DefaultDecoder) Decoder(r io.Reader, rpc *RPC) error {
 		return nil
 	}
 
-	// if it's stream -> finished
+	// if it's stream -> finished (no need to decode)
 	stream := peekBuf[0] == INCOMING_STREAM
 	if stream {
 		rpc.Stream = true
 		return nil
 	}
 
-	// if it's message -> read and copy to buffer (as payload)
+	// if it's message -> read and copy to buffer (as payload, need to decode)
 	buf := make([]byte, 1024)
 	n, err := r.Read(buf)
 	if err != nil {
