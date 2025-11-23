@@ -153,7 +153,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 		}
 	}
 
-	// 循环读取 (如果不加入wg, 这里的loop会出现异常)
+	// ReadLoop 循环读取 (如果不加入wg, 这里的loop会出现异常)
 	// 可以将其理解为需要将当个Conn的单个事情处理完, 才能再处理同一个Conn的下一件事
 	// 这是因为在conn的loop中我们对Chan进行read (conn级别), 然后将数据写入rpcCh
 	// 而在rpcCh里面也有进行chan消费的一方, 消费的实际上也是接收到的conn中的data
@@ -174,7 +174,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 		rpc.From = conn.RemoteAddr().String()
 
-		// only for stream, add wait group stuff
+		// only for stream, add wait group stuff -> 对于Stream我们要持续获取
 		if rpc.Stream {
 			peer.Wg.Add(1)
 			log.Printf("server[%s] >>> Waiting till readed stream is done\n", t.ListenAddr)
@@ -183,6 +183,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 			continue
 		}
 
+		// 处理完毕进行传入, 与Consume方法对应 (调用consume则是从rpcChannel消费)
 		t.rpcCh <- rpc
 	}
 
