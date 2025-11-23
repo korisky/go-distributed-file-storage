@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-
-	"github.com/roylic/go-distributed-file-storage/p2p"
 )
 
 // handleMessage will store the message from broadcast
@@ -41,7 +39,9 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 		s.Transport.Addr(), size)
 
 	// callback to this Conn's loop
-	peer.(*p2p.TCPPeer).Wg.Done()
+	//peer.(*p2p.TCPPeer).Wg.Done()
+	peer.CloseStream()
+
 	return nil
 }
 

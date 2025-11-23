@@ -15,14 +15,14 @@ type TCPPeer struct {
 	// accept & retrieve a conn -> inbound= true, outbound = false
 	outbound bool
 	// for same conn read blocking
-	Wg *sync.WaitGroup
+	wg *sync.WaitGroup
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn:     conn,
 		outbound: outbound,
-		Wg:       &sync.WaitGroup{},
+		wg:       &sync.WaitGroup{},
 	}
 }
 
@@ -30,6 +30,11 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 func (p *TCPPeer) Send(bytes []byte) error {
 	_, err := p.Conn.Write(bytes)
 	return err
+}
+
+// CloseStream -> calling wg.Done()
+func (p *TCPPeer) CloseStream() {
+	p.wg.Done()
 }
 
 type TCPTransportOpt struct {
@@ -177,9 +182,9 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 
 		// only for stream, add wait group stuff -> 对于Stream我们要持续获取
 		if rpc.Stream {
-			peer.Wg.Add(1)
+			peer.wg.Add(1)
 			log.Printf("server[%s] >>> Waiting till readed stream is done\n", t.ListenAddr)
-			peer.Wg.Wait()
+			peer.wg.Wait()
 			log.Printf("server[%s] <<< stream done continuing the loop\n", t.ListenAddr)
 			continue
 		}
