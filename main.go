@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Main func -> ", string(b))
+	fmt.Println("Main func -> read:", string(b))
 
 	//// C) examine multiple calling
 	//for i := 0; i < 3; i++ {
