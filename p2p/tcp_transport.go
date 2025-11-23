@@ -159,6 +159,8 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	for {
 		// 注意 -> 需要将RPC创建放入for-loop中
 		rpc := RPC{}
+
+		// 使用decoder进行处理
 		err = t.Decoder.Decoder(conn, &rpc)
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {

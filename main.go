@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
@@ -48,9 +49,9 @@ func main() {
 	time.Sleep(time.Second * 2)
 
 	// C) examine multiple calling
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 3; i++ {
 		data := bytes.NewReader([]byte("my big data file here!"))
-		s2.Store("myprivatedata", data)
+		s2.Store(fmt.Sprintf("myprivatedata_%d", i), data)
 		time.Sleep(5 * time.Millisecond)
 	}
 

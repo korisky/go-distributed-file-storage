@@ -128,12 +128,13 @@ func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	// 转换路径 + 创建路径
 	pathKey := s.PathTransformFunc(key)
-	if err := os.MkdirAll(s.Root+pathKey.PathName, os.ModePerm); err != nil {
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
 		return 0, err
 	}
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	fullPath := s.Root + pathKey.fullPath()
-	f, err := os.Create(fullPath)
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.fullPath())
+	f, err := os.Create(fullPathNameWithRoot)
 	if err != nil {
 		return 0, err
 	}
@@ -143,6 +144,6 @@ func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("writtern %d bytes to disk: %s\n", n, fullPath)
+	log.Printf("writtern %d bytes to disk: %s\n", n, fullPathNameWithRoot)
 	return n, nil
 }
