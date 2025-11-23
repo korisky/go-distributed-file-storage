@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/roylic/go-distributed-file-storage/p2p"
 	"io"
 	"log"
 )
@@ -47,34 +48,34 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 
 // handleMessageGetFile handle get file request from other node
 func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
-	log.Printf("server[%s] recv key:%s\n", s.Transport.Addr(), msg)
 
 	// 1) 如果本地没有 (通过map确认), 也就返回内容了
 	if !s.store.Has(msg.Key) {
-		return fmt.Errorf("server[%s] not found file :%s, end handleMessage logic\n",
-			s.Transport.Addr(), msg.Key)
+		return fmt.Errorf("[%s] need to serve file (%s), but it does not exist on disk\n", s.Transport.Addr(), msg.Key)
 	}
 
 	// 2) 如果本地有, 需要向请求方write回去数据流 (peer.Send 通过TCP传输s)
-	log.Printf("server[%s] serving file with key %s over the network\n",
-		s.Transport.Addr(), msg.Key)
+	log.Printf("[%s] serving file (%s) over the network\n", s.Transport.Addr(), msg.Key)
+
 	// 获取目标的文件的reader
 	r, err := s.store.Read(msg.Key)
 	if err != nil {
 		return err
 	}
+
 	// 找到该peer的conn连接
 	requestPeer, ok := s.peers[from]
 	if !ok {
-		return fmt.Errorf("server[%s] found peer %s had not connected",
-			s.Transport.Addr(), from)
+		return fmt.Errorf("[%s] found peer %s had not connected", s.Transport.Addr(), from)
 	}
-	// copy 数据流 & 传输回去
+
+	requestPeer.Send([]byte{p2p.INCOMING_MESSAGE})
 	n, err := io.Copy(requestPeer, r)
 	if err != nil {
 		return err
 	}
-	log.Printf("server[%s] written %d byets over the network\n",
-		s.Transport.Addr(), n)
+
+	log.Printf("[%s] written (%d) byets over the network to %s\n",
+		s.Transport.Addr(), n, from)
 	return nil
 }

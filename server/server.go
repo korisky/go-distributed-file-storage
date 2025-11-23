@@ -48,14 +48,14 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
 	if s.store.Has(key) {
-		log.Printf("server[%s] found file %s locally, sending...",
-			s.Transport.Addr(), key)
+		log.Printf("[%s] serving file (%s) from local disk\n", s.Transport.Addr(), key)
 		return s.store.Read(key)
 	}
 
 	// do not have key, broadcast for finding
 	log.Printf("server[%s] Do not have file %s locally, fetching...",
 		s.Transport.Addr(), key)
+
 	msg := Message{
 		Payload: MessageGetFile{
 			Key: key,
@@ -65,6 +65,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		return nil, err
 	}
 
+	time.Sleep(time.Millisecond * 500)
+
 	for _, peer := range s.peers {
 		fileBuffer := new(bytes.Buffer)
 		n, err := io.CopyN(fileBuffer, peer, 10)
@@ -72,8 +74,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 			// TODO
 			return nil, err
 		}
-		log.Printf("server[%s] received %d bytes over network\n",
-			s.Transport.Addr(), n)
+		log.Printf("[%s] received (%d) bytes over network from (%s)\n",
+			s.Transport.Addr(), n, peer.RemoteAddr())
 		log.Println(fileBuffer.String())
 	}
 
