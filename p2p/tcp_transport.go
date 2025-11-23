@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -134,7 +133,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	// 该handleConn方法内所有异常导致return前都会执行conn.Close()
 	var err error
 	defer func() {
-		fmt.Printf("dropping peer connection:%s\n", err)
+		log.Printf("dropping peer connection:%s\n", err)
 		conn.Close()
 	}()
 

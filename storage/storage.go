@@ -110,7 +110,7 @@ func (s *Storage) Has(key string) bool {
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
 	defer func() {
-		fmt.Printf("deleted [%s] from disk\n", pathKey.FileName)
+		log.Printf("deleted [%s] from disk\n", pathKey.FileName)
 	}()
 	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
 	return os.RemoveAll(s.Root + pathKey.fullPath())

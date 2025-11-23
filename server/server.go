@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -120,6 +119,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	// TODO time consuming
 	// TODO user multi writer
 	time.Sleep(time.Millisecond * 5)
+
+	// go through all peers, send the data to them
 	for _, peer := range s.peers {
 		// first byte for message type indication
 		peer.Send([]byte{p2p.INCOMING_STREAM})
@@ -128,7 +129,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("server[%s] recv & writtern %d bytes\n",
+		log.Printf("server[%s] recv & writtern %d bytes\n",
 			s.Transport.Addr(), n)
 	}
 	return nil
@@ -195,8 +196,9 @@ func (s *FileServer) broadcast(m *Message) error {
 	}
 	// send
 	for _, peer := range s.peers {
-		// first byte to indicate the msg type
+		// First byte to indicate the msg type
 		peer.Send([]byte{p2p.INCOMING_MESSAGE})
+		// Second then send the rest (file-buffer)
 		if err := peer.Send(buf.Bytes()); err != nil {
 			return err
 		}
