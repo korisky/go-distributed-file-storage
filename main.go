@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
@@ -50,10 +49,10 @@ func main() {
 	time.Sleep(time.Second * 2)
 
 	// D) store 1 file -> then get it
-	data := bytes.NewReader([]byte("my big data file here!"))
-	s2.Store("cool-pic.jpg", data)
-
-	time.Sleep(5 * time.Millisecond)
+	//data := bytes.NewReader([]byte("my big data file here!"))
+	//s2.Store("cool-pic.jpg", data)
+	//
+	//time.Sleep(5 * time.Millisecond)
 
 	r, err := s2.Get("cool-pic.jpg") // no file found but get it from network
 	if err != nil {
@@ -63,7 +62,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(b))
+	fmt.Println("Main func -> ", string(b))
 
 	//// C) examine multiple calling
 	//for i := 0; i < 3; i++ {
@@ -104,6 +103,5 @@ func main() {
 	//	log.Fatal(err)
 	//}
 	//fmt.Println("file downloaded: " + string(b))
-
-	select {}
+	//select {}
 }

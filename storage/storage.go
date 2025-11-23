@@ -102,26 +102,29 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 // Has 判断是否存在
 func (s *Storage) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
-	_, err := os.Stat(s.Root + pathKey.fullPath())
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	_, err := os.Stat(pathNameWithRoot)
 	return !errors.Is(err, os.ErrNotExist)
 }
 
 // Delete 删除文件
 func (s *Storage) Delete(key string) error {
 	pathKey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
 	defer func() {
 		log.Printf("deleted [%s] from disk\n", pathKey.FileName)
 	}()
 	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
-	return os.RemoveAll(s.Root + pathKey.fullPath())
+	return os.RemoveAll(pathNameWithRoot)
 }
 
 // readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
 func (s *Storage) readStream(key string) (io.ReadCloser, error) {
 	// 转换路径
 	pathKey := s.PathTransformFunc(key)
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.fullPath())
 	// 打开文件
-	return os.Open(s.Root + pathKey.fullPath())
+	return os.Open(fullPathNameWithRoot)
 }
 
 // writeStream 从reader写入文件

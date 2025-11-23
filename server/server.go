@@ -39,8 +39,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 
 	// put into map
 	s.peers[p.RemoteAddr().String()] = p
-	log.Printf("server[%s] connected with remote:%s \n",
-		p.LocalAddr(), p.RemoteAddr())
+	log.Printf("[%s] connected with remote:%s\n", p.LocalAddr(), p.RemoteAddr())
 	return nil
 }
 
@@ -68,21 +67,19 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	time.Sleep(time.Millisecond * 500)
 
 	for _, peer := range s.peers {
-		fileBuffer := new(bytes.Buffer)
-		n, err := io.CopyN(fileBuffer, peer, 10)
+		n, err := s.store.Write(key, io.LimitReader(peer, 22))
 		if err != nil {
-			// TODO
 			return nil, err
 		}
+
 		log.Printf("[%s] received (%d) bytes over network from (%s)\n",
 			s.Transport.Addr(), n, peer.RemoteAddr())
-		log.Println(fileBuffer.String())
+
+		peer.CloseStream()
 	}
 
-	select {}
-
 	// do not have key
-	return nil, nil
+	return s.store.Read(key)
 }
 
 // Store contains below duties
