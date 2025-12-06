@@ -58,10 +58,16 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	// 2) 如果本地有, 需要向请求方write回去数据流 (peer.Send 通过TCP传输s)
 	log.Printf("[%s] serving file (%s) over the network\n", s.Transport.Addr(), msg.Key)
 
-	// 获取目标的文件的reader & fileSize
+	// 获取目标的文件的reader & fileSize (记得关闭)
 	fSize, r, err := s.store.Read(msg.Key)
 	if err != nil {
 		return err
+	}
+	// 确认可以转换为ReadCloser接口
+	rc, ok := r.(io.ReadCloser)
+	if ok {
+		// defer关闭流
+		defer rc.Close()
 	}
 
 	// 找到该peer的conn连接

@@ -85,7 +85,6 @@ func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 // Read 从文件读取
 func (s *Storage) Read(key string) (int64, io.Reader, error) {
 	// 不需要额外buffer, 直接返回文件流 (disk->network)
-	// FIXME: 需要注意调用方需要关闭
 	return s.readStream(key)
 }
 
