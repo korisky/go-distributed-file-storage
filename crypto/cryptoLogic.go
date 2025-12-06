@@ -7,6 +7,12 @@ import (
 	"io"
 )
 
+func newAesKey() []byte {
+	keyBuf := make([]byte, 32)
+	io.ReadFull(rand.Reader, keyBuf)
+	return keyBuf
+}
+
 func copyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 
 	// AES encryption prepare
