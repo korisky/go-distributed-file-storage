@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"io"
@@ -69,13 +70,16 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 		return fmt.Errorf("[%s] found peer %s had not connected", s.Transport.Addr(), from)
 	}
 
-	requestPeer.Send([]byte{p2p.INCOMING_MESSAGE})
+	// first send the 'incoming-Stream' byte to the peer
+	// TODO then can send the file size as an int64
+	requestPeer.Send([]byte{p2p.INCOMING_STREAM})
+	var fileSize int64 = 22
+	binary.Write(requestPeer, binary.LittleEndian, fileSize)
 	n, err := io.Copy(requestPeer, r)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[%s] written (%d) byets over the network to %s\n",
-		s.Transport.Addr(), n, from)
+	log.Printf("[%s] written (%d) byets over the network to %s\n", s.Transport.Addr(), n, from)
 	return nil
 }

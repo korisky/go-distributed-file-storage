@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"io"
 	"log"
@@ -67,7 +68,10 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	time.Sleep(time.Millisecond * 500)
 
 	for _, peer := range s.peers {
-		n, err := s.store.Write(key, io.LimitReader(peer, 22))
+		// TODO first bytes to read file size, without hanging
+		var fileSize int64
+		binary.Read(peer, binary.LittleEndian, &fileSize)
+		n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
@@ -121,8 +125,12 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 
 	// go through all peers, send the data to them
 	for _, peer := range s.peers {
-		// first byte for message type indication
+		// first send the 'incoming-Stream' byte to the peer
+		// TODO then can send the file size as an int64
 		peer.Send([]byte{p2p.INCOMING_STREAM})
+		var fileSize int64 = 22
+		binary.Write(peer, binary.LittleEndian, fileSize)
+
 		// then send the file
 		n, err := io.Copy(peer, fileBuf)
 		if err != nil {
@@ -171,7 +179,7 @@ func (s *FileServer) loop() {
 			// 1) decode the msg (blocking)
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
-				log.Println("decoding error:", err)
+				log.Printf("server[%s] decoding error:%s", s.Transport.Addr(), err)
 			}
 
 			// 2) handle message (store)

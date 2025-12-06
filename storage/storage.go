@@ -50,8 +50,8 @@ type PathKey struct {
 	FileName string
 }
 
-// fileFullPath 获取文件全路径名
-func (k PathKey) fullPath() string {
+// FullPath 获取文件全路径名
+func (k PathKey) FullPath() string {
 	return fmt.Sprintf("%s/%s", k.PathName, k.FileName)
 }
 
@@ -85,9 +85,10 @@ func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 
 // Read 从文件读取的流程:
 // 1) 根据key调用转换路径, 2) 打开文件流, 3)通过buffer将文件流读出
+// FIXME: instead of copying directly to a reader, first copy to a buffer, then return the file from the readStream
 func (s *Storage) Read(key string) (io.Reader, error) {
 	// 读取
-	stream, err := s.readStream(key)
+	_, stream, err := s.readStream(key)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +99,20 @@ func (s *Storage) Read(key string) (io.Reader, error) {
 	_, err = io.Copy(buf, stream)
 	return buf, err
 }
+
+//func (s *Storage) Read(key string) (int64, io.Reader, error) {
+//	// 读取
+//	n, stream, err := s.readStream(key)
+//	if err != nil {
+//		return n, nil, err
+//	}
+//	// 延迟关闭字节流
+//	defer stream.Close()
+//	// 将输入流写入buffer
+//	buf := new(bytes.Buffer)
+//	_, err = io.Copy(buf, stream)
+//	return n, buf, err
+//}
 
 // Has 判断是否存在
 func (s *Storage) Has(key string) bool {
@@ -119,12 +134,21 @@ func (s *Storage) Delete(key string) error {
 }
 
 // readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
-func (s *Storage) readStream(key string) (io.ReadCloser, error) {
+func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
 	// 转换路径
 	pathKey := s.PathTransformFunc(key)
-	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.fullPath())
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 	// 打开文件
-	return os.Open(fullPathNameWithRoot)
+	fio, err := os.Open(fullPathNameWithRoot)
+	if err != nil {
+		return 0, nil, err
+	}
+	// 获取文件信息 (size)
+	fi, err := fio.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+	return fi.Size(), fio, nil
 }
 
 // writeStream 从reader写入文件
@@ -136,7 +160,7 @@ func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 		return 0, err
 	}
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.fullPath())
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 	f, err := os.Create(fullPathNameWithRoot)
 	if err != nil {
 		return 0, err

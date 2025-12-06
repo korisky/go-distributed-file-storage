@@ -11,7 +11,7 @@ func TestPathTransformFunc(t *testing.T) {
 	key := "SydneyHoliday"
 	pathKey := CASPathTransformFunc(key)
 	fmt.Println(pathKey.FileName)
-	fmt.Println(pathKey.fullPath())
+	fmt.Println(pathKey.FullPath())
 }
 
 func TestStorage(t *testing.T) {
