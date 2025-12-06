@@ -19,7 +19,7 @@ func TestStorage(t *testing.T) {
 	key := "SydneyHoliday"
 	store, data := storeFile(key, t)
 	// read file
-	r, err := store.Read(key)
+	_, r, err := store.Read(key)
 	if err != nil {
 		t.Error(err)
 	}

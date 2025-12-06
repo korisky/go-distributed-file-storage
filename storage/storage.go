@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -83,21 +82,11 @@ func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-// Read 从文件读取的流程:
-// 1) 根据key调用转换路径, 2) 打开文件流, 3)通过buffer将文件流读出
-// FIXME: instead of copying directly to a reader, first copy to a buffer, then return the file from the readStream
+// Read 从文件读取
 func (s *Storage) Read(key string) (int64, io.Reader, error) {
-	// 读取
-	n, stream, err := s.readStream(key)
-	if err != nil {
-		return n, nil, err
-	}
-	// 延迟关闭字节流
-	defer stream.Close()
-	// 将输入流写入buffer
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, stream)
-	return n, buf, err
+	// 不需要额外buffer, 直接返回文件流 (disk->network)
+	// FIXME: 需要注意调用方需要关闭
+	return s.readStream(key)
 }
 
 // Has 判断是否存在
