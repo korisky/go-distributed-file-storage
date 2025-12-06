@@ -49,7 +49,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
 	if s.store.Has(key) {
 		log.Printf("[%s] serving file (%s) from local disk\n", s.Transport.Addr(), key)
-		return s.store.Read(key)
+		_, reader, err := s.store.Read(key)
+		return reader, err
 	}
 
 	// do not have key, broadcast for finding
@@ -83,7 +84,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	}
 
 	// do not have key
-	return s.store.Read(key)
+	_, reader, err := s.store.Read(key)
+	return reader, err
 }
 
 // Store contains below duties

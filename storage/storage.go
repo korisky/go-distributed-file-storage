@@ -86,33 +86,19 @@ func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 // Read 从文件读取的流程:
 // 1) 根据key调用转换路径, 2) 打开文件流, 3)通过buffer将文件流读出
 // FIXME: instead of copying directly to a reader, first copy to a buffer, then return the file from the readStream
-func (s *Storage) Read(key string) (io.Reader, error) {
+func (s *Storage) Read(key string) (int64, io.Reader, error) {
 	// 读取
-	_, stream, err := s.readStream(key)
+	n, stream, err := s.readStream(key)
 	if err != nil {
-		return nil, err
+		return n, nil, err
 	}
 	// 延迟关闭字节流
 	defer stream.Close()
 	// 将输入流写入buffer
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, stream)
-	return buf, err
+	return n, buf, err
 }
-
-//func (s *Storage) Read(key string) (int64, io.Reader, error) {
-//	// 读取
-//	n, stream, err := s.readStream(key)
-//	if err != nil {
-//		return n, nil, err
-//	}
-//	// 延迟关闭字节流
-//	defer stream.Close()
-//	// 将输入流写入buffer
-//	buf := new(bytes.Buffer)
-//	_, err = io.Copy(buf, stream)
-//	return n, buf, err
-//}
 
 // Has 判断是否存在
 func (s *Storage) Has(key string) bool {

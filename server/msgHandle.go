@@ -58,8 +58,8 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	// 2) 如果本地有, 需要向请求方write回去数据流 (peer.Send 通过TCP传输s)
 	log.Printf("[%s] serving file (%s) over the network\n", s.Transport.Addr(), msg.Key)
 
-	// 获取目标的文件的reader
-	r, err := s.store.Read(msg.Key)
+	// 获取目标的文件的reader & fileSize
+	fSize, r, err := s.store.Read(msg.Key)
 	if err != nil {
 		return err
 	}
@@ -71,10 +71,10 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	}
 
 	// first send the 'incoming-Stream' byte to the peer
-	// TODO then can send the file size as an int64
 	requestPeer.Send([]byte{p2p.INCOMING_STREAM})
-	var fileSize int64 = 22
-	binary.Write(requestPeer, binary.LittleEndian, fileSize)
+
+	// then can send the file size as an int64
+	binary.Write(requestPeer, binary.LittleEndian, fSize)
 	n, err := io.Copy(requestPeer, r)
 	if err != nil {
 		return err
