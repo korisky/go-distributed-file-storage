@@ -90,8 +90,8 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	requestPeer.Send([]byte{p2p.INCOMING_STREAM})
 
 	// then can send the file size as an int64
-	binary.Write(requestPeer, binary.LittleEndian, fSize)
-	n, err := io.Copy(requestPeer, r)
+	binary.Write(requestPeer, binary.LittleEndian, fSize+16)
+	n, err := crypto.CopyEncrypt(s.EncKey, r, requestPeer)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 // makeServer extract the server opts
-func makeServer(listenAddr string, nodes ...string) *server.FileServer {
+func makeServer(encKey []byte, listenAddr string, nodes ...string) *server.FileServer {
 	// 1. tcp options
 	tcpOpts := p2p.TCPTransportOpt{
 		ListenAddr:    listenAddr,
@@ -23,7 +23,7 @@ func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 	transport := p2p.NewTCPTransport(tcpOpts)
 	// 2. file server options
 	fileServerOpts := server.FileServerOpts{
-		EncKey:            crypto.NewAesKey(),
+		EncKey:            encKey,
 		StorageRoot:       listenAddr + "_network",
 		PathTransformFunc: storage.CASPathTransformFunc,
 		Transport:         transport,
@@ -38,8 +38,10 @@ func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 func main() {
 
 	// multi-server setting up
-	s2 := makeServer(":4999", ":3999")
-	s1 := makeServer(":3999", "")
+	sharedKey := crypto.NewAesKey()
+
+	s2 := makeServer(sharedKey, ":4999", ":3999")
+	s1 := makeServer(sharedKey, ":3999", "")
 
 	go func() {
 		log.Fatal(s1.Start())
