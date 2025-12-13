@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"io"
 	"log"
@@ -29,11 +31,19 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 		return fmt.Errorf("peer (%s) not found in Mapping, end handleMessage logic", from)
 	}
 
-	// store the input stream from peer
+	// decrypt first
+	var decryptedBuf bytes.Buffer
 	// 由于TCPPeer包含net.Conn, 并且net.Conn接口实现了Read接口,
-	// 所以可以被当作是io.Reader放入, 可以被读出内容
 	// 由于网络流并不包含EOF, 使用LimitReader进行封装
-	size, err := s.store.Write(msg.Key, io.LimitReader(peer, msg.Size))
+	// 所以可以被当作是io.Reader放入, 可以被读出内容
+	_, err := crypto.CopyDecrypt(s.EncKey, io.LimitReader(peer, msg.Size), &decryptedBuf)
+	if err != nil {
+		return err
+	}
+
+	// read decrypted bytes
+	size, err := s.store.Write(msg.Key, &decryptedBuf)
+
 	if err != nil {
 		return err
 	}

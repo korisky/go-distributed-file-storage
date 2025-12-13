@@ -8,6 +8,7 @@ import (
 
 // FileServerOpts inner Transport is for accepting the p2p communication
 type FileServerOpts struct {
+	EncKey            []byte
 	StorageRoot       string
 	PathTransformFunc storage.PathTransformFunc
 	Transport         p2p.Transport

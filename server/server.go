@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"io"
 	"log"
 	"strings"
@@ -128,16 +129,22 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	// go through all peers, send the data to them
 	for _, peer := range s.peers {
 		// first send the 'incoming-Stream' byte to the peer
-		// TODO then can send the file size as an int64
 		peer.Send([]byte{p2p.INCOMING_STREAM})
-		var fileSize int64 = 22
-		binary.Write(peer, binary.LittleEndian, fileSize)
 
-		// then send the file
-		n, err := io.Copy(peer, fileBuf)
+		// send with encryption
+		n, err := crypto.CopyEncrypt(s.EncKey, fileBuf, peer)
 		if err != nil {
 			return err
 		}
+
+		//var fileSize int64 = 22
+		//binary.Write(peer, binary.LittleEndian, fileSize)
+		//
+		//// then send the file
+		//n, err := io.Copy(peer, fileBuf)
+		//if err != nil {
+		//	return err
+		//}
 		log.Printf("server[%s] recv & writtern %d bytes\n",
 			s.Transport.Addr(), n)
 	}
