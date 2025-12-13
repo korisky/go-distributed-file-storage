@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"io"
 	"log"
 	"os"
@@ -123,6 +124,31 @@ func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
 		return 0, nil, err
 	}
 	return fi.Size(), fio, nil
+}
+
+// WriteDecrypt encKey:AES-Key, key: fileKey, r: io.Reader
+func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
+	// 转换路径 + 创建路径
+	pathKey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
+		return 0, err
+	}
+	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+	f, err := os.Create(fullPathNameWithRoot)
+	if err != nil {
+		return 0, err
+	}
+	// 写入文件 (连接时由于每次传入的是Stream, 没有EOF, 会导致Blocking)
+	// 可以使用 CopyN 指定拷贝大小 / 使用limitReader
+	// copy with decrypt
+	n, err := crypto.CopyDecrypt(encKey, r, f)
+	if err != nil {
+		return 0, err
+	}
+	log.Printf("writtern %d bytes to disk: %s\n", int64(n), fullPathNameWithRoot)
+	return int64(n), nil
 }
 
 // writeStream 从reader写入文件

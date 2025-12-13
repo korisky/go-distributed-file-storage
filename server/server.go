@@ -48,9 +48,9 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 // Get file from storage
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
-	if s.store.Has(key) {
+	if s.Storage.Has(key) {
 		log.Printf("[%s] serving file (%s) from local disk\n", s.Transport.Addr(), key)
-		_, reader, err := s.store.Read(key)
+		_, reader, err := s.Storage.Read(key)
 		return reader, err
 	}
 
@@ -73,7 +73,10 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		// TODO first bytes to read file size, without hanging
 		var fileSize int64
 		binary.Read(peer, binary.LittleEndian, &fileSize)
-		n, err := s.store.Write(key, io.LimitReader(peer, fileSize))
+
+		// decrypt
+		n, err := s.Storage.WriteDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
+		//n, err := s.Storage.Write(key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +88,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	}
 
 	// do not have key
-	_, reader, err := s.store.Read(key)
+	_, reader, err := s.Storage.Read(key)
 	return reader, err
 }
 
@@ -103,8 +106,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		teeReader = io.TeeReader(r, fileBuf)
 	)
 
-	// 1) store, after write, the reader r is empty
-	size, err := s.store.Write(key, teeReader)
+	// 1) Storage, after write, the reader r is empty
+	size, err := s.Storage.Write(key, teeReader)
 	if err != nil {
 		return err
 	}
@@ -156,8 +159,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	//fileBuf := new(bytes.Buffer)
 	//teeReader := io.TeeReader(r, fileBuf)
 	//
-	//// 1) store, after write, the reader r is empty
-	//if err := s.store.Write(key, teeReader); err != nil {
+	//// 1) Storage, after write, the reader r is empty
+	//if err := s.Storage.Write(key, teeReader); err != nil {
 	//	return err
 	//}
 	//
@@ -191,7 +194,7 @@ func (s *FileServer) loop() {
 				log.Printf("server[%s] decoding error:%s", s.Transport.Addr(), err)
 			}
 
-			// 2) handle message (store)
+			// 2) handle message (Storage)
 			if err := s.handleMessage(rpc.From, &msg); err != nil {
 				log.Println("handling message error:", err)
 			}

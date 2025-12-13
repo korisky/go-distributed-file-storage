@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/roylic/go-distributed-file-storage/crypto"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
+	"io"
 	"log"
 	"time"
 )
@@ -49,21 +51,28 @@ func main() {
 	}()
 	time.Sleep(time.Second * 2)
 
+	key := "cool-pic.jpg"
+
 	// D) store 1 file -> then get it
 	data := bytes.NewReader([]byte("my big data file here!"))
-	s2.Store("cool-pic.jpg", data)
-
+	s2.Store(key, data)
 	time.Sleep(5 * time.Millisecond)
 
-	//r, err := s2.Get("cool-pic.jpg") // no file found but get it from network
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//b, err := io.ReadAll(r)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//fmt.Println("Main func -> read:", string(b))
+	// delete
+	if err := s2.Storage.Delete(key); err != nil {
+		log.Fatal(err)
+	}
+	time.Sleep(2 * time.Millisecond)
+
+	r, err := s2.Get(key) // no file found but get it from network
+	if err != nil {
+		log.Fatal(err)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Main func -> read:", string(b))
 
 	//// C) examine multiple calling
 	//for i := 0; i < 3; i++ {

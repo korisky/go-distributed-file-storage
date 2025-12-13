@@ -21,8 +21,8 @@ type FileServer struct {
 	peerLock sync.Mutex
 	peers    map[string]p2p.Peer
 
-	store  *storage.Storage
-	quitCh chan struct{}
+	Storage *storage.Storage
+	quitCh  chan struct{}
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
@@ -33,7 +33,7 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 	return &FileServer{
 		FileServerOpts: opts,
 		peers:          make(map[string]p2p.Peer),
-		store:          storage.NewStore(storageOpts),
+		Storage:        storage.NewStore(storageOpts),
 		quitCh:         make(chan struct{}),
 	}
 }

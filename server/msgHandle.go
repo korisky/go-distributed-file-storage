@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-// handleMessage will store the message from broadcast
+// handleMessage will Storage the message from broadcast
 func (s *FileServer) handleMessage(from string, msg *Message) error {
 	switch v := msg.Payload.(type) {
 	case MessageStoreFile:
@@ -21,7 +21,7 @@ func (s *FileServer) handleMessage(from string, msg *Message) error {
 	return nil
 }
 
-// handleMessageStoreFile specific handle message for store file
+// handleMessageStoreFile specific handle message for Storage file
 func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error {
 	log.Printf("server[%s] recv %+v\n", s.Transport.Addr(), msg)
 
@@ -42,7 +42,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	}
 
 	// read decrypted bytes
-	size, err := s.store.Write(msg.Key, &decryptedBuf)
+	size, err := s.Storage.Write(msg.Key, &decryptedBuf)
 
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
 
 	// 1) 如果本地没有 (通过map确认), 也就返回内容了
-	if !s.store.Has(msg.Key) {
+	if !s.Storage.Has(msg.Key) {
 		return fmt.Errorf("[%s] need to serve file (%s), but it does not exist on disk\n", s.Transport.Addr(), msg.Key)
 	}
 
@@ -69,7 +69,7 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	log.Printf("[%s] serving file (%s) over the network\n", s.Transport.Addr(), msg.Key)
 
 	// 获取目标的文件的reader & fileSize (记得关闭)
-	fSize, r, err := s.store.Read(msg.Key)
+	fSize, r, err := s.Storage.Read(msg.Key)
 	if err != nil {
 		return err
 	}
