@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/server"
 	"github.com/roylic/go-distributed-file-storage/storage"
-	"io"
 	"log"
 	"time"
 )
@@ -21,6 +21,7 @@ func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 	transport := p2p.NewTCPTransport(tcpOpts)
 	// 2. file server options
 	fileServerOpts := server.FileServerOpts{
+		EncKey:            crypto.NewAesKey(),
 		StorageRoot:       listenAddr + "_network",
 		PathTransformFunc: storage.CASPathTransformFunc,
 		Transport:         transport,
@@ -49,20 +50,20 @@ func main() {
 	time.Sleep(time.Second * 2)
 
 	// D) store 1 file -> then get it
-	//data := bytes.NewReader([]byte("my big data file here!"))
-	//s2.Store("cool-pic.jpg", data)
-	//
-	//time.Sleep(5 * time.Millisecond)
+	data := bytes.NewReader([]byte("my big data file here!"))
+	s2.Store("cool-pic.jpg", data)
 
-	r, err := s2.Get("cool-pic.jpg") // no file found but get it from network
-	if err != nil {
-		log.Fatal(err)
-	}
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Main func -> read:", string(b))
+	time.Sleep(5 * time.Millisecond)
+
+	//r, err := s2.Get("cool-pic.jpg") // no file found but get it from network
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//b, err := io.ReadAll(r)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//fmt.Println("Main func -> read:", string(b))
 
 	//// C) examine multiple calling
 	//for i := 0; i < 3; i++ {
