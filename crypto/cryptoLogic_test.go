@@ -13,20 +13,24 @@ func TestCopyEncryptDecrypt(t *testing.T) {
 	// encryption
 	src := bytes.NewReader([]byte(payload))
 	dst := new(bytes.Buffer)
-	key := newAesKey()
-	_, err := copyEncrypt(key, src, dst)
+	key := NewAesKey()
+	_, err := CopyEncrypt(key, src, dst)
 	if err != nil {
 		t.Error(err)
 	}
 
 	fmt.Printf("cypher in str %s\n", dst.String())
+	fmt.Println(len(payload))
+	fmt.Println(len(dst.String()))
 
 	// decryption
 	out := new(bytes.Buffer)
-	if _, err := copyDecrypt(key, dst, out); err != nil {
+	nw, err := CopyDecrypt(key, dst, out)
+	if err != nil {
 		t.Error(err)
 	}
 	fmt.Printf("plain text in str %s\n", out.String())
+	fmt.Printf("NW = 16 + len(payload), result:%t", nw == len(payload)+16)
 
 	// comparison
 	if payload != out.String() {

@@ -7,13 +7,13 @@ import (
 	"io"
 )
 
-func newAesKey() []byte {
+func NewAesKey() []byte {
 	keyBuf := make([]byte, 32)
 	io.ReadFull(rand.Reader, keyBuf)
 	return keyBuf
 }
 
-func copyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
+func CopyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 	// AES encryption prepare
 	cipherBlock, err := aes.NewCipher(key)
 	if err != nil {
@@ -33,6 +33,7 @@ func copyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 	var (
 		buf    = make([]byte, 32*1024)
 		stream = cipher.NewCTR(cipherBlock, iv)
+		nw     = cipherBlock.BlockSize()
 	)
 
 	// looping
@@ -43,6 +44,7 @@ func copyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 			if _, err := dst.Write(buf[:n]); err != nil {
 				return 0, err
 			}
+			nw += nw // add extra bytes
 		}
 		if err == io.EOF {
 			break
@@ -54,7 +56,7 @@ func copyEncrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 	return 0, err
 }
 
-func copyDecrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
+func CopyDecrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 	// AES encryption prepare
 	cipherBlock, err := aes.NewCipher(key)
 	if err != nil {
@@ -74,15 +76,18 @@ func copyDecrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 	var (
 		buf    = make([]byte, 32*1024)
 		stream = cipher.NewCTR(cipherBlock, iv)
+		nw     = cipherBlock.BlockSize()
 	)
 
 	for {
 		n, err := src.Read(buf)
 		if n > 0 {
 			stream.XORKeyStream(buf, buf[:n])
-			if _, err := dst.Write(buf[:n]); err != nil {
+			nn, err := dst.Write(buf[:n])
+			if err != nil {
 				return 0, err
 			}
+			nw += nn // add extra bytes
 		}
 		if err == io.EOF {
 			break
@@ -91,5 +96,5 @@ func copyDecrypt(key []byte, src io.Reader, dst io.Writer) (int, error) {
 			return 0, err
 		}
 	}
-	return 0, nil
+	return nw, nil
 }
