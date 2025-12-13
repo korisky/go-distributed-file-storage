@@ -123,56 +123,24 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		return err
 	}
 
-	// 3) broadcast file stream (stream type)
-	// TODO simulate big file keep sending
-	// TODO time consuming
-	// TODO user multi writer
+	// 3) broadcast file stream concurrently
 	time.Sleep(time.Millisecond * 5)
 
-	// go through all peers, send the data to them
+	// writing to peers concurrently (by multi-writer)
+	var peers []io.Writer
 	for _, peer := range s.peers {
-		// first send the 'incoming-Stream' byte to the peer
-		peer.Send([]byte{p2p.INCOMING_STREAM})
-
-		// send with encryption
-		n, err := crypto.CopyEncrypt(s.EncKey, fileBuf, peer)
-		if err != nil {
-			return err
-		}
-
-		//var fileSize int64 = 22
-		//binary.Write(peer, binary.LittleEndian, fileSize)
-		//
-		//// then send the file
-		//n, err := io.Copy(peer, fileBuf)
-		//if err != nil {
-		//	return err
-		//}
-		log.Printf("server[%s] recv & writtern %d bytes\n",
-			s.Transport.Addr(), n)
+		peers = append(peers, peer)
 	}
+	mw := io.MultiWriter(peers...)
+	mw.Write([]byte{p2p.INCOMING_STREAM})
+	n, err := crypto.CopyEncrypt(s.EncKey, fileBuf, mw)
+	if err != nil {
+		return err
+	}
+	
+	log.Printf("server[%s] recv & writtern %d bytes to disk\n",
+		s.Transport.Addr(), n)
 	return nil
-
-	//// use teeReader to copy the reader, or else
-	//// the read could only be used once, later
-	//// broadcast only received empty
-	//fileBuf := new(bytes.Buffer)
-	//teeReader := io.TeeReader(r, fileBuf)
-	//
-	//// 1) Storage, after write, the reader r is empty
-	//if err := s.Storage.Write(key, teeReader); err != nil {
-	//	return err
-	//}
-	//
-	//// 2) broadcast (PayLoad struct)
-	//p := &DataMessage{
-	//	Key:  key,
-	//	Data: fileBuf.Bytes(),
-	//}
-	//return s.broadcast(&Message{
-	//	From:    "TODO",
-	//	Payload: p,
-	//})
 }
 
 // loop is for continuing retrieve msg from Transport channel

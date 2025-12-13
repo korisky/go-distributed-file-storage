@@ -83,49 +83,6 @@ func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-// Read 从文件读取
-func (s *Storage) Read(key string) (int64, io.Reader, error) {
-	// 不需要额外buffer, 直接返回文件流 (disk->network)
-	return s.readStream(key)
-}
-
-// Has 判断是否存在
-func (s *Storage) Has(key string) bool {
-	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
-	_, err := os.Stat(pathNameWithRoot)
-	return !errors.Is(err, os.ErrNotExist)
-}
-
-// Delete 删除文件
-func (s *Storage) Delete(key string) error {
-	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
-	defer func() {
-		log.Printf("deleted [%s] from disk\n", pathKey.FileName)
-	}()
-	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
-	return os.RemoveAll(pathNameWithRoot)
-}
-
-// readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
-func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
-	// 转换路径
-	pathKey := s.PathTransformFunc(key)
-	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
-	// 打开文件
-	fio, err := os.Open(fullPathNameWithRoot)
-	if err != nil {
-		return 0, nil, err
-	}
-	// 获取文件信息 (size)
-	fi, err := fio.Stat()
-	if err != nil {
-		return 0, nil, err
-	}
-	return fi.Size(), fio, nil
-}
-
 // WriteDecrypt encKey:AES-Key, key: fileKey, r: io.Reader
 func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
 	// 打开文件
@@ -163,4 +120,47 @@ func (s *Storage) openFileForWriting(key string) (*os.File, error) {
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
 	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 	return os.Create(fullPathNameWithRoot)
+}
+
+// Read 从文件读取
+func (s *Storage) Read(key string) (int64, io.Reader, error) {
+	// 不需要额外buffer, 直接返回文件流 (disk->network)
+	return s.readStream(key)
+}
+
+// readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
+func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
+	// 转换路径
+	pathKey := s.PathTransformFunc(key)
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+	// 打开文件
+	fio, err := os.Open(fullPathNameWithRoot)
+	if err != nil {
+		return 0, nil, err
+	}
+	// 获取文件信息 (size)
+	fi, err := fio.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+	return fi.Size(), fio, nil
+}
+
+// Has 判断是否存在
+func (s *Storage) Has(key string) bool {
+	pathKey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	_, err := os.Stat(pathNameWithRoot)
+	return !errors.Is(err, os.ErrNotExist)
+}
+
+// Delete 删除文件
+func (s *Storage) Delete(key string) error {
+	pathKey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	defer func() {
+		log.Printf("deleted [%s] from disk\n", pathKey.FileName)
+	}()
+	// TODO 暂时不做递归删除无用文件夹, 避免hash碰撞导致删除另外文件
+	return os.RemoveAll(pathNameWithRoot)
 }
