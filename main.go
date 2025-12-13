@@ -40,41 +40,60 @@ func main() {
 	// multi-server setting up
 	sharedKey := crypto.NewAesKey()
 
-	s2 := makeServer(sharedKey, ":4999", ":3999")
 	s1 := makeServer(sharedKey, ":3999", "")
+	s2 := makeServer(sharedKey, ":4999", ":3999")
+	s3 := makeServer(sharedKey, ":5999", ":3999", ":4999")
 
-	go func() {
-		log.Fatal(s1.Start())
-	}()
-	time.Sleep(time.Millisecond * 500)
+	servers := []*server.FileServer{s1, s2, s3}
 
-	go func() {
-		log.Fatal(s2.Start())
-	}()
-	time.Sleep(time.Second * 2)
-
-	key := "cool-pic.jpg"
-
-	// D) store 1 file -> then get it
-	data := bytes.NewReader([]byte("my big data file here!"))
-	s2.Store(key, data)
-	time.Sleep(5 * time.Millisecond)
-
-	// delete
-	if err := s2.Storage.Delete(key); err != nil {
-		log.Fatal(err)
+	for i, s := range servers {
+		if err := s.Start(); err != nil {
+			log.Fatalf("Server %d failed to start:%v", i+1, err)
+		}
+		time.Sleep(time.Millisecond * 100)
 	}
-	time.Sleep(2 * time.Millisecond)
+	//
+	//go func() {
+	//	log.Fatal(s1.Start())
+	//}()
+	//time.Sleep(time.Millisecond * 500)
+	//
+	//go func() {
+	//	log.Fatal(s2.Start())
+	//}()
+	//time.Sleep(time.Millisecond * 500)
+	//
+	//go func() {
+	//	log.Fatal(s3.Start())
+	//}()
+	//time.Sleep(time.Second * 1)
 
-	r, err := s2.Get(key) // no file found but get it from network
-	if err != nil {
-		log.Fatal(err)
+	for i := range 5 {
+		fmt.Println()
+		key := fmt.Sprintf("cool-pic_%d.png", i)
+
+		// store 1 file
+		data := bytes.NewReader([]byte(fmt.Sprintf("my big data file here! %d", i)))
+		s3.Store(key, data)
+		time.Sleep(5 * time.Millisecond)
+
+		// delete
+		if err := s3.Storage.Delete(key); err != nil {
+			log.Fatal(err)
+		}
+		time.Sleep(2 * time.Millisecond)
+
+		// get from network
+		r, err := s3.Get(key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		b, err := io.ReadAll(r)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Main func -> read:", string(b))
 	}
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Main func -> read:", string(b))
 
 	//// C) examine multiple calling
 	//for i := 0; i < 3; i++ {

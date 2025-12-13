@@ -22,7 +22,9 @@ type FileServer struct {
 	peers    map[string]p2p.Peer
 
 	Storage *storage.Storage
-	quitCh  chan struct{}
+
+	errCh  chan error    // 出错时的停止
+	quitCh chan struct{} // 退出时的停止
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {

@@ -23,7 +23,9 @@ func (s *FileServer) Start() error {
 	_ = s.bootstrapNetwork()
 
 	// looping accept msg
-	s.loop()
+	// -> using another goroutine (in the background)
+	s.errCh = make(chan error, 1)
+	go s.loop()
 
 	return nil
 }
@@ -137,10 +139,14 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	
+
 	log.Printf("server[%s] recv & writtern %d bytes to disk\n",
 		s.Transport.Addr(), n)
 	return nil
+}
+
+func (s *FileServer) Err() <-chan error {
+	return s.errCh
 }
 
 // loop is for continuing retrieve msg from Transport channel
@@ -160,6 +166,7 @@ func (s *FileServer) loop() {
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Printf("server[%s] decoding error:%s", s.Transport.Addr(), err)
+				continue // don't fatal on decode error
 			}
 
 			// 2) handle message (Storage)
