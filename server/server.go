@@ -62,7 +62,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 	msg := Message{
 		Payload: MessageGetFile{
-			Key: key,
+			Key: crypto.HashKey(key),
 		},
 	}
 	if err := s.broadcast(&msg); err != nil {
@@ -115,8 +115,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	}
 	msg := Message{
 		Payload: MessageStoreFile{
-			Key:  key,
-			Size: size + 16, // with 16 bytes of AES key
+			Key:  crypto.HashKey(key), // hash the key
+			Size: size + 16,           // with 16 bytes of AES key
 		},
 	}
 

@@ -3,9 +3,19 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
+	"encoding/hex"
 	"io"
 )
+
+// HashKey -> using md5
+// for local storage, just normal key
+// for fetching remote storage, need to use hashKey(key)
+func HashKey(key string) string {
+	hash := md5.Sum([]byte(key))
+	return hex.EncodeToString(hash[:])
+}
 
 func NewAesKey() []byte {
 	keyBuf := make([]byte, 32)
