@@ -9,6 +9,13 @@ import (
 	"io"
 )
 
+// GenerateID generate random ID in 32 bytes
+func GenerateID() string {
+	buf := make([]byte, 32)
+	io.ReadFull(rand.Reader, buf)
+	return hex.EncodeToString(buf)
+}
+
 // HashKey -> using md5
 // for local storage, just normal key
 // for fetching remote storage, need to use hashKey(key)
