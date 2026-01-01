@@ -42,7 +42,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	}
 
 	// read decrypted bytes
-	size, err := s.Storage.Write(msg.Key, &decryptedBuf)
+	size, err := s.Storage.Write(msg.ID, msg.Key, &decryptedBuf)
 
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
 
 	// 1) 如果本地没有 (通过map确认), 也就返回内容了
-	if !s.Storage.Has(msg.Key) {
+	if !s.Storage.Has(msg.ID, msg.Key) {
 		return fmt.Errorf("[%s] need to serve file (%s), but it does not exist on disk\n", s.Transport.Addr(), msg.Key)
 	}
 
@@ -69,7 +69,7 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 	log.Printf("[%s] serving file (%s) over the network\n", s.Transport.Addr(), msg.Key)
 
 	// 获取目标的文件的reader & fileSize (记得关闭)
-	fSize, r, err := s.Storage.Read(msg.Key)
+	fSize, r, err := s.Storage.Read(msg.ID, msg.Key)
 	if err != nil {
 		return err
 	}

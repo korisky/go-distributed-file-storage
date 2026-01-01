@@ -50,9 +50,9 @@ func (s *FileServer) OnPeer(p p2p.Peer) error {
 // Get file from storage
 func (s *FileServer) Get(key string) (io.Reader, error) {
 	// have key, just return
-	if s.Storage.Has(key) {
+	if s.Storage.Has(s.ID, key) {
 		log.Printf("[%s] serving file (%s) from local disk\n", s.Transport.Addr(), key)
-		_, reader, err := s.Storage.Read(key)
+		_, reader, err := s.Storage.Read(s.ID, key)
 		return reader, err
 	}
 
@@ -62,6 +62,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 	msg := Message{
 		Payload: MessageGetFile{
+			ID:  s.ID, // pass the identifier
 			Key: crypto.HashKey(key),
 		},
 	}
@@ -77,7 +78,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		binary.Read(peer, binary.LittleEndian, &fileSize)
 
 		// decrypt
-		n, err := s.Storage.WriteDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
+		n, err := s.Storage.WriteDecrypt(s.EncKey, s.ID, key, io.LimitReader(peer, fileSize))
 		//n, err := s.Storage.Write(key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
@@ -90,7 +91,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	}
 
 	// do not have key
-	_, reader, err := s.Storage.Read(key)
+	_, reader, err := s.Storage.Read(s.ID, key)
 	return reader, err
 }
 
@@ -109,12 +110,13 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	)
 
 	// 1) Storage, after write, the reader r is empty
-	size, err := s.Storage.Write(key, teeReader)
+	size, err := s.Storage.Write(s.ID, key, teeReader)
 	if err != nil {
 		return err
 	}
 	msg := Message{
 		Payload: MessageStoreFile{
+			ID:   s.ID,
 			Key:  crypto.HashKey(key), // hash the key
 			Size: size + 16,           // with 16 bytes of AES key
 		},
