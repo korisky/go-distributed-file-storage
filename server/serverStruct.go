@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"github.com/roylic/go-distributed-file-storage/p2p"
 	"github.com/roylic/go-distributed-file-storage/storage"
 	"sync"
@@ -8,6 +9,7 @@ import (
 
 // FileServerOpts inner Transport is for accepting the p2p communication
 type FileServerOpts struct {
+	ID                string // server identifier
 	EncKey            []byte
 	StorageRoot       string
 	PathTransformFunc storage.PathTransformFunc
@@ -31,6 +33,9 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 	storageOpts := storage.StorageOpt{
 		Root:              opts.StorageRoot,
 		PathTransformFunc: opts.PathTransformFunc,
+	}
+	if len(opts.ID) == 0 {
+		opts.ID = crypto.GenerateID()
 	}
 	return &FileServer{
 		FileServerOpts: opts,

@@ -58,10 +58,7 @@ func (k PathKey) FullPath() string {
 // StorageOpt 存储Opt
 type StorageOpt struct {
 	// Root 是保存的根路径
-	Root string
-	// ID of the owner of the storage,
-	// used for all files in that loc
-	ID                string
+	Root              string
 	PathTransformFunc PathTransformFunc
 }
 
@@ -76,23 +73,20 @@ func NewStore(opts StorageOpt) *Storage {
 	if len(opts.Root) == 0 {
 		opts.Root = DefaultRoot
 	}
-	if len(opts.ID) == 0 {
-		opts.ID = crypto.GenerateID()
-	}
 	return &Storage{
 		StorageOpt: opts,
 	}
 }
 
 // Write 添加一个Write允许外部访问
-func (s *Storage) Write(key string, r io.Reader) (int64, error) {
-	return s.writeStream(key, r)
+func (s *Storage) Write(id string, key string, r io.Reader) (int64, error) {
+	return s.writeStream(id, key, r)
 }
 
 // WriteDecrypt encKey:AES-Key, key: fileKey, r: io.Reader
-func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, error) {
+func (s *Storage) WriteDecrypt(encKey []byte, id string, key string, r io.Reader) (int64, error) {
 	// 打开文件
-	f, err := s.openFileForWriting(key)
+	f, err := s.openFileForWriting(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -104,9 +98,9 @@ func (s *Storage) WriteDecrypt(encKey []byte, key string, r io.Reader) (int64, e
 }
 
 // writeStream 从reader写入文件
-func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
+func (s *Storage) writeStream(id string, key string, r io.Reader) (int64, error) {
 	// 打开文件
-	f, err := s.openFileForWriting(key)
+	f, err := s.openFileForWriting(id, key)
 	if err != nil {
 		return 0, err
 	}
@@ -116,29 +110,29 @@ func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 }
 
 // openFileForWriting 打开文件 (附带路径转换)
-func (s *Storage) openFileForWriting(key string) (*os.File, error) {
+func (s *Storage) openFileForWriting(id string, key string) (*os.File, error) {
 	// 转换路径 + 创建路径 (path = root/id/path)
 	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, s.ID, pathKey.PathName)
+	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.PathName)
 	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
 		return nil, err
 	}
 	// 创建文件 (由于pkg是在storage, 创建的也会在此之下)
-	fullPathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, s.ID, pathKey.FullPath())
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FullPath())
 	return os.Create(fullPathNameWithRoot)
 }
 
 // Read 从文件读取
-func (s *Storage) Read(key string) (int64, io.Reader, error) {
+func (s *Storage) Read(id string, key string) (int64, io.Reader, error) {
 	// 不需要额外buffer, 直接返回文件流 (disk->network)
-	return s.readStream(key)
+	return s.readStream(id, key)
 }
 
 // readStream 读取字节流, 注意返回的应该使用ReadCloser可以关闭
-func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
+func (s *Storage) readStream(id string, key string) (int64, io.ReadCloser, error) {
 	// 转换路径
 	pathKey := s.PathTransformFunc(key)
-	fullPathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, s.ID, pathKey.FullPath())
+	fullPathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.FullPath())
 	// 打开文件
 	fio, err := os.Open(fullPathNameWithRoot)
 	if err != nil {
@@ -153,17 +147,17 @@ func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
 }
 
 // Has 判断是否存在
-func (s *Storage) Has(key string) bool {
+func (s *Storage) Has(id string, key string) bool {
 	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, s.ID, pathKey.PathName)
+	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.PathName)
 	_, err := os.Stat(pathNameWithRoot)
 	return !errors.Is(err, os.ErrNotExist)
 }
 
 // Delete 删除文件
-func (s *Storage) Delete(key string) error {
+func (s *Storage) Delete(id string, key string) error {
 	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, s.ID, pathKey.PathName)
+	pathNameWithRoot := fmt.Sprintf("%s/%s/%s", s.Root, id, pathKey.PathName)
 	defer func() {
 		log.Printf("deleted [%s] from disk\n", pathKey.FileName)
 	}()

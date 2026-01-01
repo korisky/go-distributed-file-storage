@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"fmt"
+	"github.com/roylic/go-distributed-file-storage/crypto"
 	"io"
 	"testing"
 )
@@ -17,9 +18,9 @@ func TestPathTransformFunc(t *testing.T) {
 func TestStorage(t *testing.T) {
 	// init
 	key := "SydneyHoliday"
-	store, data := storeFile(key, t)
+	store, id, data := storeFile(key, t)
 	// read file
-	_, r, err := store.Read(key)
+	_, r, err := store.Read(id, key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -33,33 +34,34 @@ func TestStorage(t *testing.T) {
 
 func TestStorage_Delete(t *testing.T) {
 	key := "SydneyHoliday"
-	store, _ := storeFile(key, t)
+	store, id, _ := storeFile(key, t)
 	// check exist
-	if exist := store.Has(key); !exist {
+	if exist := store.Has(id, key); !exist {
 		t.Errorf("Does not exist file %s\n", key)
 		return
 	}
 	// delete
-	err := store.Delete(key)
+	err := store.Delete(id, key)
 	if err != nil {
 		t.Error(err)
 	}
 	// check exist
-	if exist := store.Has(key); exist {
+	if exist := store.Has(id, key); exist {
 		t.Errorf("Does not delete the file %s\n", key)
 		return
 	}
 }
 
 // storeFile 测试使用, 保存文件
-func storeFile(key string, t *testing.T) (*Storage, []byte) {
+func storeFile(key string, t *testing.T) (*Storage, string, []byte) {
 	opts := StorageOpt{
 		PathTransformFunc: CASPathTransformFunc,
 	}
 	store := NewStore(opts)
+	id := crypto.GenerateID()
 	data := []byte("some jpg file byes")
-	if _, err := store.writeStream(key, bytes.NewReader(data)); err != nil {
+	if _, err := store.writeStream(id, key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
-	return store, data
+	return store, id, data
 }
